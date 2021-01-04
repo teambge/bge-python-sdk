@@ -1,0 +1,5 @@
+.idea/
+*.pyc
+bge_python_sdk.egg-info/
+build/
+dist/
