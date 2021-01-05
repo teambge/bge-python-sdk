@@ -1,19 +1,17 @@
 # encoding: utf-8
 from BGE_sdk.api import BGEApi
 
-client_id = 'OhQDK1uauAcApjC9ZJ96JfmIGg6ANTHR5GSBkDTC'
-client_secret = 'VRHxPtHITnylI6WwWlGOAIxpGIPDbRKm5YWaqeJ0NVaBGnyQsww' \
-                'cLdUHIpVcofKnQAWQWuJvBRMFNYBKiGou8QW9uGp3PhIZoeDiC4' \
-                'yxPAAJi6rSEHbvJhWHXDQYcOQ5'
+client_id = 'ULCKTNFLXaiDGrpXWhmNMgbeBfsDZE54CQIpRBjp'
+client_secret = '4z5G6uKKrMy7AAxGwSJN21sVXEwRrXObR2j2rntoWS5eBoT17s9VVIwLv9dt8jI3qegYGgSqzZrsfPw2IqV0xS2h5bp72t5F9wJ6nDMI3KuVubjLfN6Ka670BTG6tBvF'
 redirect_uri = 'http://test.cn'
 
 # 'client_credentials', 'authorization_code', 'refresh_token'
 grant_type = 'authorization_code'
 auth_token = 'dvuNl6oVen1pj2UmY_YohQ'
-code = 'hMs9P2JMkpbS54UtgRzBgRDmP6CNfO'
+code = 'dNlnPJEszalejZxIaN1D5ac8aa0vdP'
 
-access_token = 'AshrvHeeY3tO45Kj7gQKrbF4hoxsyD'
-refresh_token = 'dszJljntZZ3v2bFOvbk2ep13krS6RM'
+access_token = 'wEeFKL2JKdcUsC5Bbl7l2SSjgIPhAG'
+refresh_token = 'vQoX7PBFLwkZYznGp3JWNYntTW1zQn'
 
 s = BGEApi(client_id,
            client_secret,
@@ -22,10 +20,10 @@ s = BGEApi(client_id,
            auth_token=auth_token
            )
 # res = s.authorization_url(state='abc')
-#
+
 # res = s.get_access_token(code=code)
 #
-res = s.refresh_token(refresh_token)
+# res = s.refresh_token(refresh_token)
 
 # res = s.get_model(access_token, 'X3Ab52da314cseD', 'E-F19323806495',
 #                   )
@@ -59,12 +57,9 @@ res = s.refresh_token(refresh_token)
 
 # res = s.register_sample(access_token, 'E-DEFG', 4, 'P-W19318644755')
 
-# res = s.get_sample(access_token, 'E-N19120161866')
+res = s.get_sample(access_token, 'E-B19692615052')
 
-# res = s.chr_genome_variant(
-#     access_token, "E-B19889790349", "16", 53767042, 53767042)
-
-# res = s.rsid_genome_variant(
+# res = s.get_variants(
 #     access_token, 'E-B19692615052', 'rs9', 'rs72554665', 'rs1', 'rs2')
 
 # res = s.get_user_info(access_token)
