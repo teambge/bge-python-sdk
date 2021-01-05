@@ -2,7 +2,6 @@
 from urllib.parse import urljoin, urlencode
 
 from BGE_sdk.base import BaseAPI
-from BGE_sdk.base import ClientError
 
 import json
 
@@ -71,7 +70,7 @@ class BGEApi(BaseAPI):
             data['code'] = code
         elif grant_type not in ['authorization_code',
                                 'client_credentials']:
-            raise ClientError('暂不支持其他授权方式')
+            raise ValueError('暂不支持其他授权方式')
 
         return self.post(
             '/oauth2/access_token',
