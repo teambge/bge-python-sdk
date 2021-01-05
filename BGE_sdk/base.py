@@ -7,15 +7,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ClientError(Exception):
-
-    def __init__(self, error_info):
-        self.error_info = error_info
-
-    def __str__(self):
-        return self.error_info
-
-
 class BaseAPI(object):
 
     def __init__(self, timeout, base_url, grant_type, auth_token):
@@ -38,10 +29,10 @@ class BaseAPI(object):
         res = requests.request(method=method, url=url, **kwargs)
         try:
             res.raise_for_status()
-        except requests.exceptions.ReadTimeout:
-            raise ClientError('request timeout')
-        except requests.RequestException:
-            raise ClientError('request api error')
+        except requests.exceptions.ReadTimeout as e:
+            raise e
+        except requests.RequestException as e:
+            raise e
         headers = res.headers
         if 'json' not in headers.get('Content-Type', ''):
             return res.text
