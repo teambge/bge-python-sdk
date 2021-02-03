@@ -82,6 +82,48 @@ api = oauth2.get_api(token.access_token)
 print(api.get_variants('E-B1243433', 'rs333'))
 ```
 
+## SDK 方法列表
+
+### OAuth2 相关接口
+
+* get_authorization_url
+* exchange_authorization_code
+* exchange_refresh_token
+* get_credentials_token
+* get_api
+
+示例如下：
+
+```
+oauth2 = OAuth2(client_id, client_secret)
+token = oauth2.get_credentials_token()
+print(token.access_token)
+```
+
+### API 接口
+
+* get_user
+* get_variants
+* get_samples
+* get_sample
+* register_sample
+* improve_sample
+* get_taxon_abundance
+* get_func_abundance
+* get_gene_abundance
+* get_upload_token
+* get_download_url
+* invoke_model
+
+示例如下：
+
+```
+oauth2 = OAuth2(client_id, client_secret)
+token = oauth2.get_credentials_token()
+api = oauth2.get_api(token.access_token)
+print(api.get_upload_token())
+```
+
 # Contributors
 
 * xiangji1204's [github](https://github.com/xiangji1204)
