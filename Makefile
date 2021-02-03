@@ -6,11 +6,11 @@ install:
 	$(PYTHON) setup.py install
 
 # 构建源码包
-build: test
+build:
 	$(PYTHON) setup.py build sdist
 
 # 构建 wheel 包
-wheel: test
+wheel:
 	$(PYTHON) setup.py bdist_wheel
 
 # 单元测试
@@ -25,9 +25,18 @@ initdoc:
 
 # 生成 api 文档
 apidoc:
+	pip install sphinx sphinx_rtd_theme; \
 	sphinx-apidoc -f -o ./docs/api/ ./bgesdk/; \
 	cd docs/; \
 	make html
+
+upload-test:
+	pip install twine; \
+	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+upload:
+	pip install twine; \
+	twine upload dist/*
 
 clean:
 	rm -rf build dist *.egg-info docs/_build __pycache__ \
