@@ -53,15 +53,19 @@ BGE 开放平台 API 基于 OAuth 2.0 开发，并使用 SSL/TLS 加密传输，
 推荐使用 pip 进行安装。
 
 ```shell
-$ pip install bgesdk
+$ pip install bge-python-sdk
 ```
 
 或者
 
 ```shell
-$ cd <BGE_PYTHON_SDK>/
 $ make install
 ```
+
+再或者
+
+```shell
+$ python setup.py install
 
 # 测试
 
@@ -69,7 +73,6 @@ $ make install
 
 ```shell
 $ pip install pytest
-$ cd <BGE_PYTHON_SDK>/
 $ make test
 ```
 
