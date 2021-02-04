@@ -28,11 +28,15 @@ else:
     from urllib.parse import urljoin, urlencode
 from weakref import proxy
 
+import oss2
+
 
 BASE_URL = contants.BASE_URL
 DEFAULT_TIMEOUT = contants.HTTP_DEFAULT_TIMEOUT
 GRANT_AUTHORIZATION_CODE = contants.GRANT_AUTHORIZATION_CODE
 GRANT_TYPE_CREDENTIALS = contants.GRANT_TYPE_CREDENTIALS
+
+__all__ = ['OAuth2', 'API']
 
 
 class OAuth2(object):
@@ -202,7 +206,7 @@ class API(object):
     def get_samples(self, biosample_ids=None, biosample_sites=None,
                     omics=None, project_ids=None, organisms=None,
                     data_availability=None, statuses=None,
-                    page=1, limit=50, **params):
+                    next_page=None, limit=50, **kwargs):
         """获取样品列表
 
         授权码模式: 可通过本接口获取授权用户的样品；
@@ -216,12 +220,17 @@ class API(object):
             organisms ([str], 非必填): 样品生物体，取值范围：1-3；
             data_availability ([boolean], 非必填): 数据可用性；
             statuses ([str], 非必填): 数据状态，详情见 BGE 开放平台文档；
-            page (int, 非必填): 要获取的页码，默认值为 1；
+            next_page (int, 非必填): 要获取的页码，默认值为 None；
             limit (int, 非必填): 每页返回数量，默认值为 50；
 
         Returns:
             list: 样品列表；
         """
+        params = {}
+        params.update(kwargs)
+        page = 1
+        if next_page is not None:
+            page -= 1
         params.update({
             'biosample_ids': biosample_ids,
             'biosample_sites': biosample_sites,
@@ -427,6 +436,23 @@ class API(object):
         request.set_authorization(self.access_token)
         result = request.post('/sts/token', data=kwargs, timeout=timeout)
         return models.Model(result)
+
+    def upload(self, filename, file_or_string):
+        token = self.get_upload_token()
+        print(token)
+        credentials = token.credentials
+        destination = token.destination
+        bucket_name = token.bucket
+        endpoint = token.endpoint
+        access_key_id = credentials['access_key_id']
+        access_key_secret = credentials['access_key_secret']
+        security_token = credentials['security_token']
+        auth = oss2.StsAuth(
+            access_key_id, access_key_secret, security_token)
+        bucket = oss2.Bucket(auth, endpoint, bucket_name)
+        object_name = '%s/%s' % (destination, filename)
+        bucket.put_object(object_name, file_or_string)
+        return object_name
 
     def get_download_url(self, object_name, region=None,
                          expiration_time=600, **kwargs):
