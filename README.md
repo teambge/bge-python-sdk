@@ -66,14 +66,6 @@ $ make install
 
 ```shell
 $ python setup.py install
-
-# 测试
-
-运行单元测试。
-
-```shell
-$ pip install pytest
-$ make test
 ```
 
 # 快速开始
