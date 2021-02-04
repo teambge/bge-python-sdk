@@ -17,18 +17,13 @@ wheel:
 test:
 	pytest
 
-# 初始化文档目录
-initdoc:
-	mkdir docs; \
-	cd docs/; \
-	sphinx-quickstart --ext-autodoc --ext-viewcode --ext-ifconfig
+# 启动 HTTP 服务器查看文档
+py3server:
+	python3 -m http.server
 
-# 生成 api 文档
-apidoc:
-	pip install sphinx sphinx_rtd_theme; \
-	sphinx-apidoc -f -o ./docs/api/ ./bgesdk/; \
-	cd docs/; \
-	make html
+# 启动 HTTP 服务器查看文档
+py2server:
+	python -m SimpleHTTPServer
 
 upload-test:
 	pip install twine; \
