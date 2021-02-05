@@ -1,3 +1,9 @@
+import sys
+
+if sys.version_info.major <= 2:
+    reload(sys)
+    sys.setdefaultencoding("UTF-8")
+
 import setuptools
 
 with open('requirements.txt') as f:
