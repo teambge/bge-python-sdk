@@ -77,7 +77,7 @@ BGE 开放平台支持 OAuth2 的两种模式，分别是用户授权模式、�
 ## 授权码模式
 
 ```python
-from bgesdk import OAuth2
+from bgesdk import OAuth2, API
 
 code = '???????'  # 用户确认授权后平台返回的授权码
 client_id = 'demo'
@@ -92,7 +92,7 @@ print(api.get_user())
 ## 客户端模式
 
 ```python
-from bgesdk import OAuth2
+from bgesdk import OAuth2, API
 
 client_id = 'demo'
 client_secret = 'demo'
@@ -256,7 +256,7 @@ print(token.access_token)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 print(api.access_token)
 print(api.get_user)
 print(api.get_variants)
@@ -266,6 +266,35 @@ print(api.get_variants)
 # API 接口
 
 API 对象可用调用以下方法来调用 BGE 开放平台对应的接口。
+
+可直接初始化 `API` 对象，效果同 `OAuth2.get_api` 方法，不过可以单独使用，无
+需初始化 `OAuth2` 对象。
+
+![args](https://img.shields.io/badge/参数-args-blue)
+
+* `access_token`
+
+![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
+
+* `base_url=https://api.bge.genomics.cn`
+* `timeout=16.`
+
+![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
+
+```python
+from bgesdk import OAuth2, API
+
+oauth2 = OAuth2(client_id, client_secret)
+...
+api = oauth2.get_api(access_token)
+...
+
+api = API(access_token)
+print(api.access_token)
+print(api.get_user)
+print(api.get_variants)
+...
+```
 
 ## get_user
 
@@ -278,7 +307,7 @@ API 对象可用调用以下方法来调用 BGE 开放平台对应的接口。
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 user = api.get_user()
 print(user)
 print(user.json())
@@ -348,7 +377,7 @@ bgesdk.error.APIError: {
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 ret = api.get_variants('E-B12345678901', 'rs762551')
 for variant in ret:
     print(variant.source)
@@ -474,7 +503,7 @@ for variant in ret:
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 ret = api.get_samples()
 print(ret)
 print(ret.next_page)
@@ -615,7 +644,7 @@ print(sample.organism)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 ret = api.get_sample('E-B12345678901')
 print(ret)
 ```
@@ -693,14 +722,18 @@ print(ret)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
-biosample_id = api.register_sample('demo', 1, 'P-W1234567')
-print(biosample_id)
+api = API(access_token)
+ret = api.register_sample('demo', 1, 'P-W1234567')
+print(ret)
+print(ret.biosample_id)
 ```
 
 ![Success](https://img.shields.io/badge/Output-Success-green)
 
 ```python
+>>> Model({
+    'biosample_id': 'E-Bxxxxxxxxx'
+})
 >>> E-Bxxxxxxxxx
 ```
 
@@ -730,7 +763,7 @@ print(biosample_id)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 api.improve_sample(library_id="HWJBAYTGAA170328-18")
 ```
 
@@ -755,7 +788,7 @@ api.improve_sample(library_id="HWJBAYTGAA170328-18")
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 ret = api.get_taxon_abundance('E-B1234213412')
 print(ret.next_page)
 print(ret.limit)
@@ -831,7 +864,7 @@ for abundance in ret.result:
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 ret = api.get_func_abundance('E-B1234213412', 'go')
 print(ret.next_page)
 print(ret.limit)
@@ -888,7 +921,7 @@ for abundance in ret.result:
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 ret = api.get_gene_abundance('E-B1234213412', 'IGC_9.9M', 'list')
 print(ret.next_page)
 print(ret.limit)
@@ -943,7 +976,7 @@ for abundance in ret.result:
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 ret = api.get_upload_token()
 credentials = ret.credentials
 destination = ret.destination
@@ -1002,7 +1035,7 @@ bucket.put_object('%s/demo.txt' % destination, b'hello world')
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 object_name = api.upload('demo.txt', 'demo')
 print(object_name)
 with open('demo.txt', 'rb') as fp
@@ -1037,7 +1070,7 @@ print(object_name)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 ret = api.get_download_url('ods/?????/???????/E-F19581820449.rxn.relab.tsv')
 print(ret)
 print(ret.expires)
@@ -1073,7 +1106,7 @@ print(ret.expires)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = oauth2.get_api(access_token)
+api = API(access_token)
 ret = api.invoke_model('zS68QlusdT2RWsZ', biosample_id='biosample_id')
 print(ret)
 ```
