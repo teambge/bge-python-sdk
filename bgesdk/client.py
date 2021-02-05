@@ -288,7 +288,7 @@ class API(object):
             **kwargs: 其他非必填数据，例：library_id="HWJBAYTGAA170328-18"；
 
         Returns:
-            str: 生物样品编号；
+            Model: 样品数据，包含生物样品编号；
         """
         data = {}
         data.update(kwargs)
