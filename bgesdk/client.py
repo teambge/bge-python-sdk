@@ -90,7 +90,8 @@ class OAuth2(object):
             redirect_uri (str): 回调地址；
 
         Returns:
-            Model: 与授权用户关联的访问令牌，同时包含有刷新令牌、过期时间等信息；
+            AuthorizationCodeToken: 与授权用户关联的访问令牌，同时包含有刷新令牌、
+                                    过期时间等信息；
         """
         data = {
             'client_id': self.client_id,
@@ -103,7 +104,7 @@ class OAuth2(object):
         request = HTTPRequest(self.base_url)
         result = request.post(
             '/oauth2/access_token', data=data, timeout=timeout)
-        return models.Model(result)
+        return models.AuthorizationCodeToken(self, result)
 
     def exchange_refresh_token(self, refresh_token):
         """刷新令牌 access_token
@@ -124,7 +125,7 @@ class OAuth2(object):
         request = HTTPRequest(self.base_url)
         result = request.post(
             '/oauth2/access_token', data=data, timeout=timeout)
-        return models.Model(result)
+        return models.AuthorizationCodeToken(self, result)
 
     def get_credentials_token(self):
         """客户端授权模式下获取访问令牌
@@ -141,7 +142,7 @@ class OAuth2(object):
         request = HTTPRequest(self.base_url)
         result = request.post(
             '/oauth2/access_token', data=data, timeout=timeout)
-        return models.Model(result)
+        return models.ClientCredentialsToken(self, result)
 
     def get_api(self, access_token):
         """获取平台 API 调用客户端对象
