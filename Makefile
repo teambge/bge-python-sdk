@@ -19,11 +19,13 @@ test:
 
 # 启动 HTTP 服务器查看文档
 py3server:
-	python3 -m http.server
+	cd docs; \
+	python3 -m http.server 4000
 
 # 启动 HTTP 服务器查看文档
 py2server:
-	python -m SimpleHTTPServer
+	cd docs; \
+	python -m SimpleHTTPServer 4000
 
 upload-test:
 	pip install twine; \
