@@ -159,13 +159,14 @@ token = oauth2.exchange_authorization_code(code, redirect_uri)
 print(token)
 print(token.access_token)
 print(token.access_token == token['access_token'])
+print(token.refresh())
 ```
 
 
 ![Success](https://img.shields.io/badge/输出-Success-green)
 
 ```python
->>> Model({
+>>> AuthorizationCodeToken({
     "token_type": "Bearer",
     "access_token": "Wr6QmVmx5twsjRoasdfXkwmlgfXAYB",
     "refresh_token": "ME06LQoEssAJ55fS633yS4Qg61YSln",
@@ -174,6 +175,13 @@ print(token.access_token == token['access_token'])
 })
 >>> Wr6QmVmx5twsjRoasdfXkwmlgfXAYB
 >>> True
+>>> AuthorizationCodeToken({
+    "token_type": "Bearer",
+    "access_token": "ar6QewVmx5twsjewoasdfXkwmlgfXAYB",
+    "refresh_token": "ME0ewweLQoEssAJasdf323332S4Qg61YSln",
+    "scope": "abundance.default model.default profile.default sample.default:read sample.default:write service.file:read service.file:write survey.default variant.chr variant.rsid",
+    "expires_in": 21600
+})
 ```
 
 ## exchange_refresh_token
@@ -198,7 +206,7 @@ print(token.refresh_token)
 ![Success](https://img.shields.io/badge/输出-Success-green)
 
 ```python
->>> Model({
+>>> AuthorizationCodeToken({
     "token_type": "Bearer",
     "access_token": "Wr6QmVmx5twsjRoasdfXkwmlgfXAYB",
     "refresh_token": "ME06LQoEssAJ55fS633yS4Qg61YSln",
@@ -227,7 +235,7 @@ print(token.access_token)
 ![Success](https://img.shields.io/badge/输出-Success-green)
 
 ```python
->>> Model({
+>>> ClientCredentialsToken({
     "token_type": "Bearer",
     "access_token": "Wr6QmVmx5twsjRoasdfXkwmlgfXAYB",
     "scope": "abundance.default model.default profile.default sample.default:read sample.default:write service.file:read service.file:write survey.default variant.chr variant.rsid",
@@ -273,6 +281,8 @@ API 对象可用调用以下方法来调用 BGE 开放平台对应的接口。
 api = oauth2.get_api(access_token)
 user = api.get_user()
 print(user)
+print(user.json())
+print(user.dumps(indent=4))
 ```
 
 ![Success](https://img.shields.io/badge/Output-Success-green)
@@ -281,15 +291,28 @@ print(user)
 >>> Model({
     "birthday": "1989-10-01T08:00:00+0800",
     "sex": 1,
-    "personnelInfoCode": "B32E8D0024466A84A9BE9A3D3E978949",
+    "personnelInfoCode": "32333333333332323232323232323",
     "avatar": null,
-    "nickname": "张磊",
-    "email": "zhanglei3@genomics.cn",
-    "username": "zhanglei3",
-    "userId": "5be85a3f04c0fb5e93c8cf45",
-    "userAddress": "四川省西充县",
-    "phone": "17376868481"
+    "nickname": "zhangsan",
+    "email": "leafcoder@gmail.com",
+    "username": "leafcoder",
+    "userId": "323234132412412341234",
+    "userAddress": "广东省有钱市",
+    "phone": "17376??????"
 })
+>>> {u'username': u'zhanglei3', u'userAddress': u'广东省有钱市', u'userId': u'323234132412412341234', u'sex': 1, u'phone': u'17376??????', u'personnelInfoCode': u'32333333333332323232323232323', u'birthday': u'1989-10-01T08:00:00+0800', u'avatar': None, u'nickname': u'zhangsan', u'email': u'leafcoder@gmail.com'}
+>>> {
+    "birthday": "1989-10-01T08:00:00+0800",
+    "sex": 1,
+    "personnelInfoCode": "32333333333332323232323232323",
+    "avatar": null,
+    "nickname": "zhangsan",
+    "email": "leafcoder@gmail.com",
+    "username": "zhangsan",
+    "userId": "323234132412412341234",
+    "userAddress": "广东省有钱市",
+    "phone": "17376??????"
+}
 ```
 
 ![Error](https://img.shields.io/badge/Output-Error-red)
