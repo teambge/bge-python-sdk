@@ -17,7 +17,7 @@ class TestOAuth2:
         with pytest.raises(APIError) as e:
             oauth2.exchange_authorization_code('code', 'http://test.cn')
         assert e.value.code == 400
-        assert e.value.msg == u'非法请求: unauthorized_client'
+        assert e.value.msg == u'非法请求: invalid_grant'
 
     def test_invalid_access_token(self, oauth2):
         """错误的 access_token"""
