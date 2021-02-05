@@ -153,20 +153,24 @@ class OAuth2(object):
         Returns:
             API: API 对象；
         """
-        return API(self, access_token)
+        return API(
+            access_token, base_url=self.base_url, timeout=self.timeout)
 
 
 class API(object):
     """BGE 开放平台接口调用客户端
 
     Args:
-        oauth2 (OAuth2): OAuth2 对象；
         access_token (str): 访问令牌；
+        base_url (字符串, 非必填): 开放平台域名地址，默认值为 BASE_URL；
+        timeout (数字, 非必填): 接口请求默认超时间，默认值为 DEFAULT_TIMEOUT；
     """
 
-    def __init__(self, oauth2, access_token):
-        self.oauth2 = oauth2
+    def __init__(self, access_token, base_url=BASE_URL,
+                 timeout=DEFAULT_TIMEOUT):
         self.access_token = access_token
+        self.base_url = base_url
+        self.timeout = timeout
 
     def get_user(self, **params):
         """获取用户信息
@@ -174,8 +178,8 @@ class API(object):
         Returns:
             Model: 用户数据；
         """
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result = request.get('/user', params=params, timeout=timeout)
         return models.Model(result)
@@ -195,8 +199,8 @@ class API(object):
             'rsids': rsids,
             'biosample_id': biosample_id
         })
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result = request.get('/variants', params=params, timeout=timeout)
         data = []
@@ -243,8 +247,8 @@ class API(object):
             'page': page,
             'limit': limit
         })
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result = request.get('/samples', params=params, timeout=timeout)
         result = models.Model(result)
@@ -267,8 +271,8 @@ class API(object):
             Model: 样品数据；
         """
         url = '/samples/{}'.format(biosample_id)
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result = request.get(url, timeout=timeout)
         return models.Model(result)
@@ -293,12 +297,12 @@ class API(object):
             'biosample_site': int(biosample_site),
             'project_id': project_id
         })
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result = request.post(
             '/samples/register', data=data, timeout=timeout)
-        return result['biosample_id']
+        return Model(result)
 
     def improve_sample(self, biosample_id, **kwargs):
         """补充样品中未被赋值的信息
@@ -315,8 +319,8 @@ class API(object):
         data = {}
         data.update(kwargs)
         data['biosample_id'] = biosample_id
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         request.post(
             '/samples/improve', data=data, timeout=timeout)
@@ -343,8 +347,8 @@ class API(object):
         if next_page is not None:
             page -= 1
         params['page'] = page
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result, pagination = request.get(
             '/microbiome/taxon_abundance', params=params, timeout=timeout)
@@ -381,8 +385,8 @@ class API(object):
             'next_page': next_page,
             'limit': limit
         })
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result = request.get(
             '/microbiome/func_abundance', params=params,
@@ -415,8 +419,8 @@ class API(object):
             'next_page': next_page,
             'limit': limit
         })
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result = request.get(
             '/microbiome/gene_abundance', params=params, timeout=timeout)
@@ -432,8 +436,8 @@ class API(object):
         Returns:
             Model: 授权数据；
         """
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result = request.post('/sts/token', data=kwargs, timeout=timeout)
         return models.Model(result)
@@ -476,8 +480,8 @@ class API(object):
             'region': region,
             'expiration_time': expiration_time
         })
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         result = request.post('/oss/sign_url', data=data, timeout=timeout)
         return models.Model(result)
@@ -494,8 +498,8 @@ class API(object):
         """
         params = {}
         params.update(kwargs)
-        timeout = self.oauth2.timeout
-        request = HTTPRequest(self.oauth2.base_url)
+        timeout = self.timeout
+        request = HTTPRequest(self.base_url)
         request.set_authorization(self.access_token)
         model_url = '/model/{}'.format(model_id)
         result = request.get(model_url, params=params, timeout=timeout)
