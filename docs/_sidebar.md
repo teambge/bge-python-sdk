@@ -1,4 +1,3 @@
-* [介绍](/)
 * [安装](install.md)
 * [快速开始](quickstart.md)
 * [OAuth2 接口](oauth2.md)
