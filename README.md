@@ -70,7 +70,7 @@ $ python setup.py install
 
 # SDK 文档
 
-更加详细的 SDK 文档请查看 [SDK Documents](https://teambge.github.io/bge-python-sdk/)。
+更加详细的 SDK 文档请查看 [SDK Documents](https://api.bge.genomics.cn/doc/bge-python-sdk/)。
 
 # 快速开始
 
@@ -81,7 +81,7 @@ BGE 开放平台支持 OAuth2 的两种模式，分别是用户授权模式、�
 ## 授权码模式
 
 ```python
-from bgesdk import OAuth2
+from bgesdk import OAuth2, API
 
 code = '???????'  # 用户确认授权后平台返回的授权码
 client_id = 'demo'
@@ -89,20 +89,28 @@ client_secret = 'demo'
 redirect_uri = 'http://test.cn'
 oauth2 = OAuth2(client_id, client_secret)
 token = oauth2.exchange_authorization_code(code, redirect_uri)
+
 api = oauth2.get_api(token.access_token)
+print(api.get_user())
+
+api = API(token.access_token)
 print(api.get_user())
 ```
 
 ## 客户端模式
 
 ```python
-from bgesdk import OAuth2
+from bgesdk import OAuth2, API
 
 client_id = 'demo'
 client_secret = 'demo'
 oauth2 = OAuth2(client_id, client_secret)
 token = oauth2.get_credentials_token()
+
 api = oauth2.get_api(token.access_token)
+print(api.get_variants('E-B1243433', 'rs333'))
+
+api = API(token.access_token)
 print(api.get_variants('E-B1243433', 'rs333'))
 ```
 
