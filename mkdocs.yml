@@ -1,0 +1,11 @@
+site_name: BGE 开放平台 SDK
+repo_url: https://github.com/teambge/bge-python-sdk
+pages:
+- '安装': install.md
+- '快速开始': quickstart.md
+- 'OAuth2 接口': oauth2.md
+- 'API 接口': api.md
+- '图标使用': badge.md, 
+- 'Contributors': contributors.md
+theme:
+    name: material
