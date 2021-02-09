@@ -26,9 +26,13 @@ if major_version <= 2:
     from urllib import urlencode
 else:
     from urllib.parse import urljoin, urlencode
+from shutil import copyfile
 from weakref import proxy
 
 import oss2
+import requests
+import sys
+import tempfile
 
 
 BASE_URL = contants.BASE_URL
@@ -444,7 +448,6 @@ class API(object):
 
     def upload(self, filename, file_or_string):
         token = self.get_upload_token()
-        print(token)
         credentials = token.credentials
         destination = token.destination
         bucket_name = token.bucket
@@ -472,7 +475,6 @@ class API(object):
         Returns:
             Model: 文件下载地址；
         """
-
         data = {}
         data.update(kwargs)
         data.update({
@@ -485,6 +487,46 @@ class API(object):
         request.set_authorization(self.access_token)
         result = request.post('/oss/sign_url', data=data, timeout=timeout)
         return models.Model(result)
+
+    def download(self, object_name, fp, region=None,
+                 expiration_time=600, chunk_size=8192, **kwargs):
+        """下载存储在阿里云OSS（对象存储）中的文件
+
+        Args:
+            object_name (str): OSS对象；
+            fp(file like object): 可写的类文件对象；
+            region (str, 非必填): 区域（domestic、international），默认值为
+                                 domestic；
+            chunk_size(int): 下载块大小
+            expiration_time (int, 非必填): 下载地址过期时间，默认值 600s；
+        """
+        inst = self.get_download_url(
+            object_name, region=None, expiration_time=600, **kwargs)
+        size = 0
+        prog_size = 69  # 单行输出的进度条固定为 80 个字符长度
+        url = inst.url
+        chunk_size = int(chunk_size)
+        sys.stdout.write('Start downloading: %s\n' % object_name)
+        try:
+            with requests.get(url, stream=True) as r:
+                total = int(r.headers['content-length'])
+                for chunk in r.iter_content(chunk_size):
+                    size += len(chunk)
+                    eq_size = int(size * prog_size / total)
+                    equal_s = '=' * eq_size
+                    blank_s = ' ' * (prog_size - eq_size)
+                    progress = '>'.join((equal_s, blank_s))
+                    percent = '%.2f%%' % float(size / total * 100)
+                    sys.stdout.write(
+                        '%s [%s]\n' % (percent.rjust(7), progress))
+                    fp.write(chunk)
+                flush_func = getattr(fp, 'flush', None)
+                if flush_func:
+                    flush_func()
+        except requests.exceptions.HTTPError:
+            raise BGEError('download request error')
+        except Exception as e:
+            raise BGEError(e)
 
     def invoke_model(self, model_id, **kwargs):
         """模型调用
