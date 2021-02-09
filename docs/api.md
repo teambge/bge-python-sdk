@@ -821,6 +821,44 @@ print(ret.expires)
 >>> 1573026921
 ```
 
+## download
+
+[![开放平台接口文档](https://img.shields.io/badge/开放平台接口文档-lightgrey)](https://api.bge.genomics.cn/doc/SIGNURL.html)
+
+通过当前接口，直接下载阿里云 OSS（对象存储）中的文件到 `File Like Object`。
+
+![授权码模式](https://img.shields.io/badge/授权码模式-支持-green) ![客户端模式](https://img.shields.io/badge/客户端模式-支持-green)
+
+![args](https://img.shields.io/badge/参数-args-blue)
+
+* `object_name`
+* `fp`
+
+![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
+
+* `region=domestic`
+* `expiration_time=600`
+
+![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
+
+```python
+api = API(access_token)
+
+# 下载到流对象
+if py3:
+    from io import BytesIO
+    stream = BytesIO()
+else:
+    from cStringIO import StringIO
+    stream = StringIO()
+api.download('ods/?????/???????/E-F19581820449.rxn.relab.tsv', stream)
+print(stream.getvalue())
+
+# 下载到文件
+with open('demo/test.txt', 'wb') as fp:
+    api.download('ods/?????/???????/E-F19581820449.rxn.relab.tsv', fp)
+```
+
 ## invoke_model
 
 [![开放平台接口文档](https://img.shields.io/badge/开放平台接口文档-lightgrey)](https://api.bge.genomics.cn/doc/INTERPRETATION/)
