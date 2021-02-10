@@ -15,7 +15,8 @@ wheel:
 
 # 单元测试
 test:
-	pytest
+	chmod +x ./test_env.sh; \
+	./test_env.sh
 
 # 启动 HTTP 服务器查看文档
 py3server:
@@ -40,4 +41,4 @@ clean:
 		   bgesdk/__pycache__ bgesdk/*.pyc \
 		   tests/__pycache__ tests/*.pyc
 
-.PHONY: test initdoc apidoc build wheel install clean
+.PHONY: test py3server py2server upload upload-test build wheel install clean

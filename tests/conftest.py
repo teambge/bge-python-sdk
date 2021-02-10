@@ -4,16 +4,21 @@ from bgesdk.client import OAuth2
 
 import logging
 import pytest
+import os
 
 
-base_url = 'https://api.bge.genomics.cn'
-client_id = 'demo'      # XXX change this for test
-client_secret = 'demo'  # XXX change this for test
+BASE_URL = os.environ.get('BASE_URL')
+CLIENT_ID = os.environ.get('CLIENT_ID')
+CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
+REDIRECT_URL = os.environ.get('REDIRECT_URL')
+ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
+SELF_BIOSAMPLE_ID = os.environ.get('SELF_BIOSAMPLE_ID')
+OTHER_BIOSAMPLE_ID = os.environ.get('OTHER_BIOSAMPLE_ID')
 
 
 @pytest.fixture(scope='session')
 def redirect_url():
-    return 'http://test.cn'  # XXX change this for test
+    return REDIRECT_URL
 
 
 @pytest.fixture(scope='session')
@@ -25,13 +30,12 @@ def logger():
 
 @pytest.fixture(scope='session')
 def oauth2():
-    return OAuth2(client_id, client_secret, base_url=base_url)
+    return OAuth2(CLIENT_ID, CLIENT_SECRET, base_url=BASE_URL)
 
 
 @pytest.fixture(scope='session')
 def access_token():
-    access_token = 'demo'  # XXX change this for test
-    return access_token
+    return ACCESS_TOKEN
 
 
 @pytest.fixture(scope='session')
@@ -42,10 +46,10 @@ def api(oauth2, access_token):
 @pytest.fixture(scope='session')
 def self_biosample_id():
     """本人的样品编号"""
-    return 'E-Bxxxxxxxx'  # XXX change this for test
+    return SELF_BIOSAMPLE_ID
 
 
 @pytest.fixture(scope='session')
 def other_biosample_id():
     """其他人的样品编号"""
-    return 'E-B12341324'  # XXX change this for test
+    return OTHER_BIOSAMPLE_ID
