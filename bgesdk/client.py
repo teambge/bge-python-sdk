@@ -22,8 +22,8 @@ from .http import HTTPRequest
 from .utils import major_version
 
 if major_version <= 2:
-    from urlparse import urljoin
     from urllib import urlencode
+    from urlparse import urljoin
 else:
     from urllib.parse import urljoin, urlencode
 from shutil import copyfile
@@ -306,7 +306,7 @@ class API(object):
         request.set_authorization(self.access_token)
         result = request.post(
             '/samples/register', data=data, timeout=timeout)
-        return Model(result)
+        return models.Model(result)
 
     def improve_sample(self, biosample_id, **kwargs):
         """补充样品中未被赋值的信息
