@@ -113,11 +113,12 @@ bgesdk.error.APIError: {
 
 ```python
 api = API(access_token)
-ret = api.get_variants('E-B12345678901', 'rs762551')
+ret = api.get_variants('E-B12345678901', 'rs762551,rs333')
 for variant in ret:
     print(variant.source)
     print(variant['is_assayed'])
     print(variant)
+    break
 ```
 
 ![Success](https://img.shields.io/badge/Output-Success-green)

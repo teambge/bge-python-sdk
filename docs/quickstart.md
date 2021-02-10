@@ -34,8 +34,8 @@ oauth2 = OAuth2(client_id, client_secret)
 token = oauth2.get_credentials_token()
 
 api = oauth2.get_api(token.access_token)
-print(api.get_variants('E-B1243433', 'rs333'))
+print(api.get_variants('E-B1243433', 'rs1,rs333'))
 
 api = API(token.access_token)
-print(api.get_variants('E-B1243433', 'rs333'))
+print(api.get_variants('E-B1243433', 'rs1,rs333'))
 ```
