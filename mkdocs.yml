@@ -1,11 +1,21 @@
 site_name: BGE 开放平台 SDK
+repo_name: bge-python-sdk
 repo_url: https://github.com/teambge/bge-python-sdk
+site_description: BGE 开放平台 是一个跨越多级数据的（多）组学数据平台，开发者在获得用户授权后，将可以通过开放平台提供的 API 访问关联用户的（多）组学数据，甚至写入数据。
+site_author: leafcoder,xiangji1204
+site_favicon: favicon.ico
+copyright: Copyright© 深圳华大生命科学研究院 版权所有
+dev_addr: 127.0.0.1:8100
 pages:
-- '安装': install.md
-- '快速开始': quickstart.md
-- 'OAuth2 接口': oauth2.md
-- 'API 接口': api.md
-- '图标使用': badge.md, 
-- 'Contributors': contributors.md
+- 介绍: README.md
+- 安装: install.md
+- 快速开始: quickstart.md
+- OAuth2 接口: oauth2.md
+- API 接口: api.md
+- 图标使用: badge.md
+- Contributors: contributors.md
+- 平台相关:
+  - 平台官网: https://open.bge.genomics.cn
+  - 接口文档: https://api.bge.genomics.cn/doc
 theme:
-    name: material
+    name: readthedocs
