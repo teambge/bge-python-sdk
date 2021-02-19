@@ -7,7 +7,7 @@ import pytest
 import os
 
 
-BASE_URL = os.environ.get('BASE_URL')
+ENDPOINT = os.environ.get('ENDPOINT')
 CLIENT_ID = os.environ.get('CLIENT_ID')
 CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
 REDIRECT_URL = os.environ.get('REDIRECT_URL')
@@ -30,7 +30,7 @@ def logger():
 
 @pytest.fixture(scope='session')
 def oauth2():
-    return OAuth2(CLIENT_ID, CLIENT_SECRET, base_url=BASE_URL)
+    return OAuth2(CLIENT_ID, CLIENT_SECRET, endpoint=ENDPOINT)
 
 
 @pytest.fixture(scope='session')

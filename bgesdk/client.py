@@ -8,14 +8,15 @@ BGE 开放平台 SDK 客户端模块。
 
 使用示例：
 
-    >>> oauth2 = OAuth2('demo', 'demo')
+    >>> oauth2 = OAuth2(
+            'demo', 'demo', endpoint='https://api.bge.genomics.cn')
     >>> token = oauth2.get_credentials_token()
     >>> api = oauth2.get_api(token.access_token)
     >>> api.invoke_model('demo_model_id')
     Model({...})
 """
 
-from . import contants
+from . import constants
 from . import models
 from .error import BGEError
 from .http import HTTPRequest
@@ -33,14 +34,37 @@ import oss2
 import requests
 import sys
 import tempfile
+import warnings
 
 
-BASE_URL = contants.BASE_URL
-DEFAULT_TIMEOUT = contants.HTTP_DEFAULT_TIMEOUT
-GRANT_AUTHORIZATION_CODE = contants.GRANT_AUTHORIZATION_CODE
-GRANT_TYPE_CREDENTIALS = contants.GRANT_TYPE_CREDENTIALS
+__all__ = ['OAuth2', 'API', 'endpoints']
 
-__all__ = ['OAuth2', 'API']
+endpoints = [v['endpoint'] for v in constants.ENDPOINTS]
+
+
+def alive(self):
+    """检查服务可用性
+
+    Returns:
+        布尔型: True 代表可用，False 代表不可用
+    """
+    timeout = self.timeout
+    verbose = self.verbose
+    max_retries = self.max_retries
+    request = HTTPRequest(
+        self.endpoint, max_retries=max_retries, verbose=verbose)
+    try:
+        result = request.get('/ping', timeout=timeout)
+    except Exception as e:
+        return False
+    return True
+
+
+def check_endpoint(endpoint):
+    if endpoint not in endpoints:
+        warnings.warn(
+            'Endpoint %s does not exist in the officially-provided endpoin'
+            't list.' % endpoint)
 
 
 class OAuth2(object):
@@ -51,16 +75,30 @@ class OAuth2(object):
     Args:
         client_id (字符串): 第三方客户端 client_id；
         client_secret (字符串): 第三方客户端 client_secret；
-        base_url (字符串, 非必填): 开放平台域名地址，默认值为 BASE_URL；
-        timeout (数字, 非必填): 接口请求默认超时间，默认值为 DEFAULT_TIMEOUT；
+        endpoint (字符串, 非必填): 平台对外服务的访问域名，
+                                 默认值为 https://api.bge.genomics.cn；
+        max_retries (数字, 非必填): 接口请求重试次数，默认值为 3；
+        timeout (数字, 非必填): 接口请求默认超时间，默认值为 18；
+        verbose (布尔, 非必填)：输出测试日志，默认值为 False；
     """
 
-    def __init__(self, client_id, client_secret, base_url=BASE_URL,
-                 timeout=DEFAULT_TIMEOUT):
+    alive = alive
+
+    def __init__(self, client_id, client_secret, endpoint=None,
+                 max_retries=3, timeout=18, verbose=False):
         self.client_id = client_id
         self.client_secret = client_secret
+        if endpoint is None:
+            endpoint = constants.DEFAULT_ENDPOINT
+        self.endpoint = endpoint
+        check_endpoint(endpoint)
+        if max_retries is not None:
+            max_retries = int(max_retries)
+        self.max_retries = max_retries
+        if timeout is not None:
+            timeout = int(timeout)
         self.timeout = timeout
-        self.base_url = base_url
+        self.verbose = verbose
 
     def get_authorization_url(self, redirect_uri, state=None, scopes=None):
         """获取用户授权页链接地址。
@@ -84,7 +122,7 @@ class OAuth2(object):
         if state is not None:
             params["state"] = state
         qs = urlencode(params)
-        return '?'.join((urljoin(self.base_url, '/oauth2/authorize'), qs))
+        return '?'.join((urljoin(self.endpoint, '/oauth2/authorize'), qs))
 
     def exchange_authorization_code(self, code, redirect_uri):
         """用户授权码交换访问令牌
@@ -100,12 +138,15 @@ class OAuth2(object):
         data = {
             'client_id': self.client_id,
             'client_secret': self.client_secret,
-            'grant_type': GRANT_AUTHORIZATION_CODE,
+            'grant_type': constants.GRANT_AUTHORIZATION_CODE,
             'redirect_uri': redirect_uri,
             'code': code
         }
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         result = request.post(
             '/oauth2/access_token', data=data, timeout=timeout)
         return models.AuthorizationCodeToken(self, result)
@@ -126,7 +167,10 @@ class OAuth2(object):
             'refresh_token': refresh_token
         }
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         result = request.post(
             '/oauth2/access_token', data=data, timeout=timeout)
         return models.AuthorizationCodeToken(self, result)
@@ -140,10 +184,13 @@ class OAuth2(object):
         data = {
             'client_id': self.client_id,
             'client_secret': self.client_secret,
-            'grant_type': GRANT_TYPE_CREDENTIALS
+            'grant_type': constants.GRANT_TYPE_CREDENTIALS
         }
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         result = request.post(
             '/oauth2/access_token', data=data, timeout=timeout)
         return models.ClientCredentialsToken(self, result)
@@ -158,7 +205,11 @@ class OAuth2(object):
             API: API 对象；
         """
         return API(
-            access_token, base_url=self.base_url, timeout=self.timeout)
+            access_token,
+            endpoint=self.endpoint,
+            max_retries=self.max_retries,
+            timeout=self.timeout,
+            verbose=self.verbose)
 
 
 class API(object):
@@ -166,15 +217,28 @@ class API(object):
 
     Args:
         access_token (str): 访问令牌；
-        base_url (字符串, 非必填): 开放平台域名地址，默认值为 BASE_URL；
-        timeout (数字, 非必填): 接口请求默认超时间，默认值为 DEFAULT_TIMEOUT；
+        endpoint (字符串, 非必填): 平台对外服务的访问域名，默认值为 pro-main；
+        max_retries (数字, 非必填): 接口请求重试次数，默认值为 3；
+        timeout (数字, 非必填): 接口请求默认超时间，默认值为 18；
+        verbose (布尔, 非必填)：输出测试日志，默认值为 False；
     """
 
-    def __init__(self, access_token, base_url=BASE_URL,
-                 timeout=DEFAULT_TIMEOUT):
+    alive = alive
+
+    def __init__(self, access_token, endpoint=None, max_retries=3,
+                 timeout=18, verbose=False):
         self.access_token = access_token
-        self.base_url = base_url
+        if endpoint is None:
+            endpoint = constants.DEFAULT_ENDPOINT
+        self.endpoint = endpoint
+        check_endpoint(endpoint)
+        if max_retries is not None:
+            max_retries = int(max_retries)
+        self.max_retries = max_retries
+        if timeout is not None:
+            timeout = int(timeout)
         self.timeout = timeout
+        self.verbose = verbose
 
     def get_user(self, **params):
         """获取用户信息
@@ -183,7 +247,10 @@ class API(object):
             Model: 用户数据；
         """
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result = request.get('/user', params=params, timeout=timeout)
         return models.Model(result)
@@ -204,7 +271,10 @@ class API(object):
             'biosample_id': biosample_id
         })
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result = request.get('/variants', params=params, timeout=timeout)
         data = []
@@ -252,7 +322,10 @@ class API(object):
             'limit': limit
         })
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result = request.get('/samples', params=params, timeout=timeout)
         result = models.Model(result)
@@ -276,7 +349,10 @@ class API(object):
         """
         url = '/samples/{}'.format(biosample_id)
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result = request.get(url, timeout=timeout)
         return models.Model(result)
@@ -302,7 +378,10 @@ class API(object):
             'project_id': project_id
         })
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result = request.post(
             '/samples/register', data=data, timeout=timeout)
@@ -324,7 +403,10 @@ class API(object):
         data.update(kwargs)
         data['biosample_id'] = biosample_id
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         request.post(
             '/samples/improve', data=data, timeout=timeout)
@@ -352,7 +434,10 @@ class API(object):
             page -= 1
         params['page'] = page
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result, pagination = request.get(
             '/microbiome/taxon_abundance', params=params, timeout=timeout)
@@ -390,7 +475,10 @@ class API(object):
             'limit': limit
         })
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result = request.get(
             '/microbiome/func_abundance', params=params,
@@ -424,7 +512,10 @@ class API(object):
             'limit': limit
         })
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result = request.get(
             '/microbiome/gene_abundance', params=params, timeout=timeout)
@@ -441,7 +532,10 @@ class API(object):
             Model: 授权数据；
         """
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result = request.post('/sts/token', data=kwargs, timeout=timeout)
         return models.Model(result)
@@ -483,7 +577,10 @@ class API(object):
             'expiration_time': expiration_time
         })
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         result = request.post('/oss/sign_url', data=data, timeout=timeout)
         return models.Model(result)
@@ -541,7 +638,10 @@ class API(object):
         params = {}
         params.update(kwargs)
         timeout = self.timeout
-        request = HTTPRequest(self.base_url)
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.access_token)
         model_url = '/model/{}'.format(model_id)
         result = request.get(model_url, params=params, timeout=timeout)

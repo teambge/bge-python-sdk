@@ -1,8 +1,7 @@
 #-*- coding: utf-8 -*-
 
-from . import contants
 from .error import APIError, BGEError
-from .utils import major_version
+from .utils import major_version, new_logger
 
 from requests.adapters import HTTPAdapter
 if major_version <= 2:
@@ -10,15 +9,7 @@ if major_version <= 2:
 else:
     from urllib.parse import urljoin
 
-import logging
 import requests
-
-logger = logging.getLogger()
-DEFAULT_TIMEOUT = contants.HTTP_DEFAULT_TIMEOUT
-MAX_RETRIES = contants.HTTP_MAX_RETRIES
-HTTP_SESSION = requests.Session()
-HTTP_SESSION.mount('http://', HTTPAdapter(max_retries=MAX_RETRIES))
-HTTP_SESSION.mount('https://', HTTPAdapter(max_retries=MAX_RETRIES))
 
 
 class HTTPRequest(object):
@@ -27,12 +18,22 @@ class HTTPRequest(object):
     处理 SDK 接口的 HTTP 调用；
 
     Args:
-        base_url (str): 平台基本地址，如 https://api.bge.genomics.cn；
+        endpoint (str): 平台基本地址，如 https://api.bge.genomics.cn；
+        max_retries (数字, 非必填): 接口请求重试次数，默认值为 3；
+        verbose (布尔, 非必填)：输出测试日志，默认值为 False；
     """
 
-    def __init__(self, base_url):
-        self.base_url = base_url
+
+    def __init__(self, endpoint, max_retries=3, verbose=False):
+        self.logger = new_logger(self.__class__.__name__, verbose=verbose)
+        self.endpoint = endpoint
         self.headers = {}
+        self.session = requests.Session()
+        if max_retries is not None:
+            self.session.mount(
+                'http://', HTTPAdapter(max_retries=max_retries))
+            self.session.mount(
+                'https://', HTTPAdapter(max_retries=max_retries))
 
     def set_authorization(self, access_token):
         """设置 Authorization 头部
@@ -53,7 +54,8 @@ class HTTPRequest(object):
         Returns:
             object: 请求返回值
         """
-        return self._request('GET', path, params=params, timeout=timeout)
+        return self._request(
+            'GET', path, params=params, timeout=timeout)
 
     def post(self, path, params=None, data=None, timeout=None):
         """POST
@@ -70,7 +72,7 @@ class HTTPRequest(object):
         return self._request(
             'POST', path, params=params, data=data, timeout=timeout)
 
-    def _request(self, method, path, **kwargs):
+    def _request(self, method, path, timeout=None, **kwargs):
         """发送 HTTP 请求
 
         Args:
@@ -85,21 +87,27 @@ class HTTPRequest(object):
             object: 返回值
         """
         headers = self.headers
-        url = urljoin(self.base_url, path)
-        logger.debug('%s %s %s', method, url, kwargs)
-        timeout = kwargs.get('timeout')
-        if timeout is None:
-            kwargs['timeout'] = DEFAULT_TIMEOUT
-        resp = HTTP_SESSION.request(
-            method=method, url=url, headers=headers, **kwargs)
+        url = urljoin(self.endpoint, path)
+        self.logger.debug(
+            ('Request: \n\tmethod: %s\n\turl: %s\n\theaders: %s\n\ttimeout'
+             ': %s\n\t**kwargs=%s'),
+            method, url, headers, timeout, kwargs)
         try:
+            resp = self.session.request(
+                method=method, url=url, headers=headers, timeout=timeout,
+                **kwargs)
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
             raise BGEError('API request error: %s' % e)
+        except requests.exceptions.ConnectionError as e:
+            raise BGEError('Fail to connect: %s' % e)
         content_type_header = resp.headers.get('Content-Type', '')
         if 'application/json' not in content_type_header:
-            return resp.text
+            result = resp.text
+            self.logger.debug('Response: \n\t%s', result)
+            return result
         result = resp.json()
+        self.logger.debug('Response: \n\t%s', result)
         data = result.get('data')
         code = result['code']
         msg = result['msg']
