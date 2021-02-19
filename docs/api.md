@@ -855,13 +855,18 @@ print(ret.expires)
 
 ![授权码模式](https://img.shields.io/badge/授权码模式-支持-green) ![客户端模式](https://img.shields.io/badge/客户端模式-支持-green)
 
+![args](https://img.shields.io/badge/参数-args-blue)
+
+* `filename` -- 文件名，不能出现 `/`，否则将因权限问题无法成功上传
+* `file_or_string` -- 文件对象或字符串，文件对象必须以 `rb` 模式打开
+
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
 api = API(
     access_token, endpoint='https://api.bge.genomics.cn',
     max_retries=3, timeout=18)
-object_name = api.upload('demo.txt', 'demo')
+object_name = api.upload('demo.txt', 'file content is here')
 print(object_name)
 with open('demo.txt', 'rb') as fp
     object_name = api.upload('demo_fp.txt', fp)
@@ -885,13 +890,12 @@ print(object_name)
 
 ![args](https://img.shields.io/badge/参数-args-blue)
 
-* `object_name`
-* `fp`
+* `object_name` —— upload 方法返回的数据即为 `object_name`
+* `fp` —— 可写的类文件对象，如果是文件对象需以 `wb` 模式打开文件
 
 ![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
 
-* `region=domestic`
-* `expiration_time=600`
+* `region=domestic` —— 下载文件访问的服务器所在区域
 
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
