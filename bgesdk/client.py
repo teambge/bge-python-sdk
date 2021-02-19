@@ -20,7 +20,7 @@ from . import constants
 from . import models
 from .error import BGEError
 from .http import HTTPRequest
-from .utils import major_version
+from .utils import major_version, new_logger
 
 if major_version <= 2:
     from urllib import urlencode
@@ -99,6 +99,7 @@ class OAuth2(object):
             timeout = int(timeout)
         self.timeout = timeout
         self.verbose = verbose
+        self.logger = new_logger(self.__class__.__name__, verbose=verbose)
 
     def get_authorization_url(self, redirect_uri, state=None, scopes=None):
         """获取用户授权页链接地址。
@@ -239,6 +240,7 @@ class API(object):
             timeout = int(timeout)
         self.timeout = timeout
         self.verbose = verbose
+        self.logger = new_logger(self.__class__.__name__, verbose=verbose)
 
     def get_user(self, **params):
         """获取用户信息
@@ -600,10 +602,10 @@ class API(object):
         inst = self.get_download_url(
             object_name, region=None, expiration_time=600, **kwargs)
         size = 0
-        prog_size = 69  # 单行输出的进度条固定为 80 个字符长度
+        prog_size = 61  # 单行输出的进度条固定为 80 个字符长度
         url = inst.url
         chunk_size = int(chunk_size)
-        sys.stdout.write('Start downloading: %s\n' % object_name)
+        self.logger.debug('\n\tStart downloading: %s' % object_name)
         try:
             with requests.get(url, stream=True) as r:
                 total = int(r.headers['content-length'])
@@ -614,8 +616,8 @@ class API(object):
                     blank_s = ' ' * (prog_size - eq_size)
                     progress = '>'.join((equal_s, blank_s))
                     percent = '%.2f%%' % float(size / total * 100)
-                    sys.stdout.write(
-                        '%s [%s]\n' % (percent.rjust(7), progress))
+                    self.logger.debug(
+                        '\n\t%s [%s]' % (percent.rjust(7), progress))
                     fp.write(chunk)
                 flush_func = getattr(fp, 'flush', None)
                 if flush_func:
