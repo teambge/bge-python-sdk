@@ -2,33 +2,62 @@
 
 API 对象可用调用以下方法来调用 BGE 开放平台对应的接口。
 
+## \_\_init\_\_
+
 可直接初始化 `API` 对象，效果同 `OAuth2.get_api` 方法，不过可以单独使用，无
 需初始化 `OAuth2` 对象。
 
 ![args](https://img.shields.io/badge/参数-args-blue)
 
-* `access_token`
+* `access_token` —— 访问令牌
 
 ![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
 
-* `base_url=https://api.bge.genomics.cn`
-* `timeout=16.`
+* `endpoint=https://api.bge.genomics.cn` —— 平台服务基础地址
+* `max_retries=3` —— 最大重试次数
+* `timeout=18` —— 接口请求超时时间
+* `verbose=False` —— 开启日志输出
 
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
 from bgesdk import OAuth2, API
 
-oauth2 = OAuth2(client_id, client_secret)
+oauth2 = OAuth2(
+    client_id, client_secret,
+    endpoint='https://api.bge.genomics.cn', max_retries=3, timeout=18)
 ...
 api = oauth2.get_api(access_token)
 ...
 
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 print(api.access_token)
 print(api.get_user)
 print(api.get_variants)
 ...
+```
+
+## alive
+
+判断 BGE 开放平台的可用性。
+
+![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
+
+```python
+from bgesdk import OAuth2
+
+oauth2 = OAuth2(
+    client_id, client_secret,
+    endpoint='https://api.bge.genomics.cn', max_retries=3, timeout=18)
+print(oauth2.alive())
+```
+
+![Success](https://img.shields.io/badge/输出-Success-green)
+
+```python
+>>> True
 ```
 
 ## get_user
@@ -42,7 +71,9 @@ print(api.get_variants)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 user = api.get_user()
 print(user)
 print(user.json())
@@ -112,7 +143,9 @@ bgesdk.error.APIError: {
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.get_variants('E-B12345678901', 'rs762551,rs333')
 for variant in ret:
     print(variant.source)
@@ -226,20 +259,22 @@ for variant in ret:
 
 ![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
 
-* `biosample_ids=None`
-* `biosample_sites=None`
-* `omics=None`
-* `project_ids=None`
-* `organisms=None`
-* `data_availability=None`
-* `statuses=None`
-* `next_page=None`
-* `limit=50`
+* `biosample_ids=None` —— 生物样品编号，逗号分割多个
+* `biosample_sites=None` —— 采样位置，逗号分割多个
+* `omics=None` —— 组学，逗号分割多个
+* `project_ids=None` —— 项目编号，逗号分割多个
+* `organisms=None` —— 生物体，逗号分割多个
+* `data_availability=None` —— 数据可用性
+* `statuses=None` —— 样品状态，逗号分割多个
+* `next_page=None` —— 下一页
+* `limit=50` —— 单页返回数量
 
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.get_samples()
 print(ret)
 print(ret.next_page)
@@ -380,7 +415,9 @@ print(sample.organism)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.get_sample('E-B12345678901')
 print(ret)
 ```
@@ -447,18 +484,20 @@ print(ret)
 
 ![args](https://img.shields.io/badge/参数-args-blue)
 
-* `external_sample_id`
-* `biosample_site`
-* `project_id`
+* `external_sample_id` —— 外部样品编号（生产编号）
+* `biosample_site` —— 采样位置
+* `project_id` —— 项目编号
 
 ![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
 
-* `duplicate_enabled=False`
+* `duplicate_enabled=False` —— 是否允许注册重复的外部样品编号（生产编号）
 
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.register_sample('demo', 1, 'P-W1234567')
 print(ret)
 print(ret.biosample_id)
@@ -486,7 +525,7 @@ print(ret.biosample_id)
 
 ![args](https://img.shields.io/badge/参数-args-blue)
 
-* `biosample_id`
+* `biosample_id` —— 生物样品编号
 
 ![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
 
@@ -499,7 +538,9 @@ print(ret.biosample_id)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 api.improve_sample(library_id="HWJBAYTGAA170328-18")
 ```
 
@@ -524,7 +565,9 @@ api.improve_sample(library_id="HWJBAYTGAA170328-18")
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.get_taxon_abundance('E-B1234213412')
 print(ret.next_page)
 print(ret.limit)
@@ -600,7 +643,9 @@ for abundance in ret.result:
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.get_func_abundance('E-B1234213412', 'go')
 print(ret.next_page)
 print(ret.limit)
@@ -657,7 +702,9 @@ for abundance in ret.result:
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.get_gene_abundance('E-B1234213412', 'IGC_9.9M', 'list')
 print(ret.next_page)
 print(ret.limit)
@@ -712,7 +759,9 @@ for abundance in ret.result:
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.get_upload_token()
 credentials = ret.credentials
 destination = ret.destination
@@ -760,32 +809,6 @@ bucket.put_object('%s/demo.txt' % destination, b'hello world')
 })
 ```
 
-## upload
-
-[![开放平台接口文档](https://img.shields.io/badge/开放平台接口文档-lightgrey)](https://api.bge.genomics.cn/doc/INPUT/FILE.html)
-
-本接口封装了 OSS2 上传部分的代码，用户可以直接上传文件；
-
-![授权码模式](https://img.shields.io/badge/授权码模式-支持-green) ![客户端模式](https://img.shields.io/badge/客户端模式-支持-green)
-
-![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
-
-```python
-api = API(access_token)
-object_name = api.upload('demo.txt', 'demo')
-print(object_name)
-with open('demo.txt', 'rb') as fp
-    object_name = api.upload('demo_fp.txt', fp)
-print(object_name)
-```
-
-![Success](https://img.shields.io/badge/Output-Success-green)
-
-```python
->>> DUS-19847281036-AydD47PPV1Z1tYa9aqFnOkUuSnRlbwlQCLSqRVGD/20190716TZ-fc566b0eab42401992c41b9ddf0d80b9/demo.txt
->>> DUS-19847281036-AydD47PPV1Z1tYa9aqFnOkUuSnRlbwlQCLSqRVGD/20190716TZ-fc566b0eab42401992c41b9ddf0d80b9/demo_fp.txt
-```
-
 ## get_download_url
 
 [![开放平台接口文档](https://img.shields.io/badge/开放平台接口文档-lightgrey)](https://api.bge.genomics.cn/doc/SIGNURL.html)
@@ -806,7 +829,9 @@ print(object_name)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.get_download_url('ods/?????/???????/E-F19581820449.rxn.relab.tsv')
 print(ret)
 print(ret.expires)
@@ -820,6 +845,34 @@ print(ret.expires)
     "expires": "1573026921"
 })
 >>> 1573026921
+```
+
+## upload
+
+[![开放平台接口文档](https://img.shields.io/badge/开放平台接口文档-lightgrey)](https://api.bge.genomics.cn/doc/INPUT/FILE.html)
+
+本接口封装了 OSS2 上传部分的代码，用户可以直接上传文件；
+
+![授权码模式](https://img.shields.io/badge/授权码模式-支持-green) ![客户端模式](https://img.shields.io/badge/客户端模式-支持-green)
+
+![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
+
+```python
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
+object_name = api.upload('demo.txt', 'demo')
+print(object_name)
+with open('demo.txt', 'rb') as fp
+    object_name = api.upload('demo_fp.txt', fp)
+print(object_name)
+```
+
+![Success](https://img.shields.io/badge/Output-Success-green)
+
+```python
+>>> DUS-19847281036-AydD47PPV1Z1tYa9aqFnOkUuSnRlbwlQCLSqRVGD/20190716TZ-fc566b0eab42401992c41b9ddf0d80b9/demo.txt
+>>> DUS-19847281036-AydD47PPV1Z1tYa9aqFnOkUuSnRlbwlQCLSqRVGD/20190716TZ-fc566b0eab42401992c41b9ddf0d80b9/demo_fp.txt
 ```
 
 ## download
@@ -843,7 +896,9 @@ print(ret.expires)
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 
 # 下载到流对象
 if py3:
@@ -880,7 +935,9 @@ with open('demo/test.txt', 'wb') as fp:
 ![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
 
 ```python
-api = API(access_token)
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
 ret = api.invoke_model('zS68QlusdT2RWsZ', biosample_id='biosample_id')
 print(ret)
 ```
