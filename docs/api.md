@@ -929,12 +929,11 @@ with open('demo/test.txt', 'wb') as fp:
 
 ![args](https://img.shields.io/badge/参数-args-blue)
 
-* `fundamental_entity_id`
-* `namespace`
 * `data_element_id`
   
 ![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
 
+* `biosample_id=None`: 客户端模式下，必须提供参数 biosample_id
 * `start_time=None`
 * `end_time=None`
 * `sort_direction=desc`
@@ -951,8 +950,8 @@ namespace = 'test'
 fundamental_entity_id = '8be21998-7c8a-11eb-86eb-48a47299ee4a'
 data_element_id = '02393f70-c7e4-11e9-bfed-00163e104c79'
 ret = api.range_stream(
-    fundamental_entity_id, namespace, data_element_id,
-    start_time='2021-01', end_time='2021-03-01 10:11:00.123456')
+    data_element_id, biosample_id='E-B1234213412'
+    start_time='1970-01', end_time='2021-04-01 10:11:00.123456')
 print(ret)
 ```
 
@@ -960,25 +959,65 @@ print(ret)
 
 ```python
 >>> Model({
-    "stream_data": {
-        "name": "leo"
-    },
-    "stream_id": "bbeca010-7cba-11eb-97e9-48a47299ee4a",
-    "data_element": {
-        "data_element_name": "oxycodone",
-        "data_element_description": "羟考酮",
-        "data_element_id": "02393f70-c7e4-11e9-bfed-00163e104c79",
-        "data_element_source_domain": "atc_taiwan_fda_2018",
-        "data_element_source_id": "N02AA05"
-    },
-    "stream_meta": {
-        "fundamental_entity_id": "8be21998-7c8a-11eb-86eb-48a47299ee4a",
-        "namespace": "aaaa"
-    },
-    "stream_generate_time": "1987-01-01T00:00:00+0800",
-    "stream_generate_time_mask": "1111-00-00T00:00:00.000000±1111",
-    "create_time": "2021-03-04T15:25:02+0800"
-})
+        "result": [
+            {
+                "stream_id": "aa3609d4-7cb9-11eb-b8f3-48a47299ee4a",
+                "data_element": {
+                    "data_element_name": "oxycodone",
+                    "data_element_id": "02393f70-c7e4-11e9-bfed-00163e104c79",
+                    "data_element_description": "羟考酮"
+                },
+                "stream_generate_time_mask": "1111-00-00T00:00:00.000000±1111",
+                "stream_meta": {
+                    "user_entity_id": "m279xkEaxxPg6x6VP6pagg5K6",
+                    "namespace": "aaaa"
+                },
+                "create_time": "2021-03-04T15:17:23+0800",
+                "stream_data": {
+                    "name": "leo"
+                },
+                "stream_generate_time": "1986-01-01T00:00:00+0800"
+            },
+            {
+                "stream_id": "ae355aa8-7cb9-11eb-b8f3-48a47299ee4a",
+                "data_element": {
+                    "data_element_name": "oxycodone",
+                    "data_element_id": "02393f70-c7e4-11e9-bfed-00163e104c79",
+                    "data_element_description": "羟考酮"
+                },
+                "stream_generate_time_mask": "1111-00-00T00:00:00.000000±1111",
+                "stream_meta": {
+                    "user_entity_id": "m279xkEaxxPg6x6VP6pagg5K6",
+                    "namespace": "aaaa"
+                },
+                "create_time": "2021-03-04T15:17:29+0800",
+                "stream_data": {
+                    "name": "leo"
+                },
+                "stream_generate_time": "1987-01-01T00:00:00+0800"
+            },
+            {
+                "stream_id": "bbeca010-7cba-11eb-97e9-48a47299ee4a",
+                "data_element": {
+                    "data_element_name": "oxycodone",
+                    "data_element_id": "02393f70-c7e4-11e9-bfed-00163e104c79",
+                    "data_element_description": "羟考酮"
+                },
+                "stream_generate_time_mask": "1111-00-00T00:00:00.000000±1111",
+                "stream_meta": {
+                    "user_entity_id": "m279xkEaxxPg6x6VP6pagg5K6",
+                    "namespace": "aaaa"
+                },
+                "create_time": "2021-03-04T15:25:02+0800",
+                "stream_data": {
+                    "name": "leo"
+                },
+                "stream_generate_time": "1987-01-01T00:00:00+0800"
+            }
+        ],
+        "count": 3,
+        "next_page": null
+    })
 ```
 
 
