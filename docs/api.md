@@ -919,6 +919,69 @@ with open('demo/test.txt', 'wb') as fp:
     api.download('ods/?????/???????/E-F19581820449.rxn.relab.tsv', fp)
 ```
 
+
+## range_stream
+
+根据数据流数据生成时间范围获取数据。
+
+![授权码模式](https://img.shields.io/badge/授权码模式-支持-green) ![客户端模式](https://img.shields.io/badge/客户端模式-支持-green)
+
+
+![args](https://img.shields.io/badge/参数-args-blue)
+
+* `fundamental_entity_id`
+* `namespace`
+* `data_element_id`
+  
+![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
+
+* `start_time=None`
+* `end_time=None`
+* `sort_direction=desc`
+* `next_page=None`
+* `limit=100`
+
+![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
+
+```python
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
+namespace = 'test'
+fundamental_entity_id = '8be21998-7c8a-11eb-86eb-48a47299ee4a'
+data_element_id = '02393f70-c7e4-11e9-bfed-00163e104c79'
+ret = api.range_stream(
+    fundamental_entity_id, namespace, data_element_id,
+    start_time='2021-01', end_time='2021-03-01 10:11:00.123456')
+print(ret)
+```
+
+![Success](https://img.shields.io/badge/Output-Success-green)
+
+```python
+>>> Model({
+    "stream_data": {
+        "name": "leo"
+    },
+    "stream_id": "bbeca010-7cba-11eb-97e9-48a47299ee4a",
+    "data_element": {
+        "data_element_name": "oxycodone",
+        "data_element_description": "羟考酮",
+        "data_element_id": "02393f70-c7e4-11e9-bfed-00163e104c79",
+        "data_element_source_domain": "atc_taiwan_fda_2018",
+        "data_element_source_id": "N02AA05"
+    },
+    "stream_meta": {
+        "fundamental_entity_id": "8be21998-7c8a-11eb-86eb-48a47299ee4a",
+        "namespace": "aaaa"
+    },
+    "stream_generate_time": "1987-01-01T00:00:00+0800",
+    "stream_generate_time_mask": "1111-00-00T00:00:00.000000±1111",
+    "create_time": "2021-03-04T15:25:02+0800"
+})
+```
+
+
 ## invoke_model
 
 [![开放平台接口文档](https://img.shields.io/badge/开放平台接口文档-lightgrey)](https://api.bge.genomics.cn/doc/INTERPRETATION/)
@@ -992,5 +1055,74 @@ print(ret)
             }
         ]
     }
+})
+```
+
+## deploy_model
+
+可以通过此接口部署模型或修改模型的配置内容。
+
+![授权码模式](https://img.shields.io/badge/授权码模式-支持-green) ![客户端模式](https://img.shields.io/badge/客户端模式-支持-green)
+
+
+![args](https://img.shields.io/badge/参数-args-blue)
+
+* `model_id`
+* `source_file`
+
+![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
+
+* `handler=index.handler`
+* `memory_size=128`
+* `runtime=python3`
+* `comment=None`
+* `timeout=900`
+
+![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
+
+```python
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
+ret = api.deploy_model('zS68QlusdT2RWsZ', source_file='/home/ubuntu/test_mode.zip')
+print(ret)
+```
+
+![Success](https://img.shields.io/badge/Output-Success-green)
+
+```python
+>>> Model({
+    "version": 1
+})
+```
+
+
+## rollback_model
+
+回滚至模型之前部署的某个源码版本，配置不回滚。
+
+![授权码模式](https://img.shields.io/badge/授权码模式-支持-green) ![客户端模式](https://img.shields.io/badge/客户端模式-支持-green)
+
+
+![args](https://img.shields.io/badge/参数-args-blue)
+
+* `model_id`
+* `version`
+
+![Python 示例](https://img.shields.io/badge/示例-Python-lightgrey)
+
+```python
+api = API(
+    access_token, endpoint='https://api.bge.genomics.cn',
+    max_retries=3, timeout=18)
+ret = api.rollback_model('zS68QlusdT2RWsZ', version=5)
+print(ret)
+```
+
+![Success](https://img.shields.io/badge/Output-Success-green)
+
+```python
+>>> Model({
+    "version": 5
 })
 ```

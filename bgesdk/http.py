@@ -57,20 +57,22 @@ class HTTPRequest(object):
         return self._request(
             'GET', path, params=params, timeout=timeout)
 
-    def post(self, path, params=None, data=None, timeout=None):
+    def post(self, path, params=None, data=None, files=None, timeout=None):
         """POST
 
         Args:
             path (str): 请求路径
             params (dict, 非必填): GET 参数；
             data (dict, 非必填): POST 参数；
+            files (dict, 非必填): 文件参数；
             timeout (int, 非必填): 请求超时时间；
 
         Returns:
             object: 请求返回值
         """
         return self._request(
-            'POST', path, params=params, data=data, timeout=timeout)
+            'POST', path, params=params, data=data, files=files,
+            timeout=timeout)
 
     def _request(self, method, path, timeout=None, **kwargs):
         """发送 HTTP 请求

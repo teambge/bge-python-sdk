@@ -627,6 +627,30 @@ class API(object):
         except Exception as e:
             raise BGEError(e)
 
+    def range_stream(self, data_element_id, start_time=None, end_time=None,
+                     biosample_id=None, sort_direction=None, limit=100,
+                     next_page=None, **kwargs):
+        params = {}
+        params.update(kwargs)
+        params.update({
+            'biosample_id': biosample_id,
+            'data_element_id': data_element_id,
+            'start_time': start_time,
+            'end_time': end_time,
+            'sort_direction': sort_direction,
+            'limit': limit,
+            'next_page': next_page
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.access_token)
+        result = request.get(
+            '/stream/range', params=params, timeout=timeout)
+        return models.Model(result)
+
     def invoke_model(self, model_id, **kwargs):
         """模型调用
 
@@ -647,4 +671,70 @@ class API(object):
         request.set_authorization(self.access_token)
         model_url = '/model/{}'.format(model_id)
         result = request.get(model_url, params=params, timeout=timeout)
+        return models.Model(result)
+
+    def deploy_model(self, model_id, source_file, runtime=None,
+                     handler=None, memory_size=None, timeout=None,
+                     comment=None, **kwargs):
+        """部署模型
+
+        Args:
+            model_id (str): 模型编号。
+            source_file (str): 模型源代码 zip 文件路径。
+            runtime (str, optional): 运行环境版本。默认值：python3。
+            handler (str, optional): 模型入口函数。默认值：main.handler。
+            memory_size (int, optional): 内存占用量，单位：MB。默认：128MB。
+            timeout (int, optional): 函数计算运行超时时间，单位：秒。默认：900。
+            comment (str, optional): 备注内容。
+
+        Returns:
+            [str]: 模型部署成功返回的版本号
+        """
+        data = {}
+        data.update(kwargs)
+        data.update({
+            'model_id': model_id,
+            'runtime': runtime,
+            'handler': handler,
+            'memory_size': memory_size,
+            'timeout': timeout,
+            'comment': comment
+        })
+        files = {
+            'source_file': open(source_file, 'rb')
+        }
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.access_token)
+        result = request.post(
+            '/model/deploy', data=data, files=files, timeout=timeout)
+        return models.Model(result)
+
+    def rollback_model(self, model_id, version, **kwargs):
+        """回滚模型
+
+        Args:
+            model_id (str): 模型编号。
+            version (int): 模型版本号。
+
+        Returns:
+            [str]: 模型回滚成功后返回的新的版本号
+        """
+        data = {}
+        data.update(kwargs)
+        data.update({
+            'model_id': model_id,
+            'version': version
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.access_token)
+        result = request.post(
+            '/model/rollback', data=data, timeout=timeout)
         return models.Model(result)
