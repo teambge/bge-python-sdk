@@ -930,8 +930,10 @@ with open('demo/test.txt', 'wb') as fp:
 ![args](https://img.shields.io/badge/参数-args-blue)
 
 * `data_element_id`
-  
+
+
 ![kwargs](https://img.shields.io/badge/参数-kwargs-blue)
+
 
 * `biosample_id=None`: 客户端模式下，必须提供参数 biosample_id
 * `start_time=None`
