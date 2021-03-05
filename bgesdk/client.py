@@ -225,6 +225,7 @@ class API(object):
     """
 
     alive = alive
+    token_type = 'Bearer'
 
     def __init__(self, access_token, endpoint=None, max_retries=3,
                  timeout=18, verbose=False):
@@ -242,28 +243,33 @@ class API(object):
         self.verbose = verbose
         self.logger = new_logger(self.__class__.__name__, verbose=verbose)
 
-    def get_user(self, **params):
+    def get_user(self, timeout=None, **params):
         """获取用户信息
+
+        Args:
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             Model: 用户数据；
         """
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.get('/user', params=params, timeout=timeout)
         return models.Model(result)
 
-    def get_variants(self, biosample_id, rsids, **params):
+    def get_variants(self, biosample_id, rsids, timeout=None, **params):
         """根据rsid查询变异位点信息
 
         Args:
             biosample_id (str): 生物样品编号；
             rsids (str): 多个 rs 编号，逗号分割（必填）；如：rs1229984；
                          最多一次提供100个；
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             list: 变异位点信息；
@@ -272,12 +278,13 @@ class API(object):
             'rsids': rsids,
             'biosample_id': biosample_id
         })
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.get('/variants', params=params, timeout=timeout)
         data = []
         for item in result:
@@ -287,22 +294,23 @@ class API(object):
     def get_samples(self, biosample_ids=None, biosample_sites=None,
                     omics=None, project_ids=None, organisms=None,
                     data_availability=None, statuses=None,
-                    next_page=None, limit=50, **kwargs):
+                    next_page=None, limit=50, timeout=None, **kwargs):
         """获取样品列表
 
         授权码模式: 可通过本接口获取授权用户的样品；
         客户端模式: 可通过本接口获取客户端应用通过注册接口注册(或预先生成)的样品；
 
         Args:
-            biosample_ids ([str], 非必填): 生物样品 id，逗号分割多个；
-            biosample_sites ([str], 非必填): 采样部位，取值范围：1-15；
-            omics ([str], 非必填): 所属组学，取值范围：1-2；
-            project_ids ([str], 非必填): 所属项目，逗号分割多个；
-            organisms ([str], 非必填): 样品生物体，取值范围：1-3；
-            data_availability ([boolean], 非必填): 数据可用性；
-            statuses ([str], 非必填): 数据状态，详情见 BGE 开放平台文档；
+            biosample_ids (str, 非必填): 生物样品 id，逗号分割多个；
+            biosample_sites (str, 非必填): 采样部位，取值范围：1-15；
+            omics (str, 非必填): 所属组学，取值范围：1-2；
+            project_ids (str, 非必填): 所属项目，逗号分割多个；
+            organisms (str, 非必填): 样品生物体，取值范围：1-3；
+            data_availability (boolean, 非必填): 数据可用性；
+            statuses (str, 非必填): 数据状态，详情见 BGE 开放平台文档；
             next_page (int, 非必填): 要获取的页码，默认值为 None；
             limit (int, 非必填): 每页返回数量，默认值为 50；
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             list: 样品列表；
@@ -323,12 +331,13 @@ class API(object):
             'page': page,
             'limit': limit
         })
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.get('/samples', params=params, timeout=timeout)
         result = models.Model(result)
         data = []
@@ -337,7 +346,7 @@ class API(object):
         result['result'] = data
         return result
 
-    def get_sample(self, biosample_id):
+    def get_sample(self, biosample_id, timeout=None):
         """获取样品
 
         授权码模式: 可通过本接口获取授权用户的样品；
@@ -345,22 +354,24 @@ class API(object):
 
         Args:
             biosample_id (str): 生物样品编号；
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             Model: 样品数据；
         """
         url = '/samples/{}'.format(biosample_id)
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.get(url, timeout=timeout)
         return models.Model(result)
 
     def register_sample(self, external_sample_id, biosample_site,
-                        project_id, **kwargs):
+                        project_id, timeout=None, **kwargs):
         """注册样品
 
         Args:
@@ -368,6 +379,7 @@ class API(object):
             biosample_site (int):  采样部位；
             project_id (str): 项目编号；
             **kwargs: 其他非必填数据，例：library_id="HWJBAYTGAA170328-18"；
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             Model: 样品数据，包含生物样品编号；
@@ -379,17 +391,18 @@ class API(object):
             'biosample_site': int(biosample_site),
             'project_id': project_id
         })
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.post(
             '/samples/register', data=data, timeout=timeout)
         return models.Model(result)
 
-    def improve_sample(self, biosample_id, **kwargs):
+    def improve_sample(self, biosample_id, timeout=None, **kwargs):
         """补充样品中未被赋值的信息
 
         已赋值数据无法变更，否则接口报错；
@@ -397,6 +410,7 @@ class API(object):
         Args:
             biosample_id (str): 生物样品编号；
             **kwargs: 需要赋值的字段和值；
+            timeout (int, 非必填): 超时时间；
         """
         if not kwargs:
             # 无更新
@@ -404,17 +418,19 @@ class API(object):
         data = {}
         data.update(kwargs)
         data['biosample_id'] = biosample_id
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         request.post(
             '/samples/improve', data=data, timeout=timeout)
 
     def get_taxon_abundance(self, biosample_id, taxon_ids=None,
-                            next_page=None, limit=50, **params):
+                            next_page=None, limit=50, timeout=None,
+                            **params):
         """获取类群丰度
 
         Args:
@@ -422,6 +438,7 @@ class API(object):
             taxon_ids ([str], 非必填): BGE 物种编号，多个以逗号分割；
             next_page ([int], 非必填): 当前页码，默认值为 1，即首页；
             limit (int, 非必填): [description]. 默认值为 50；
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             Model: 类群丰度数据详情；
@@ -435,12 +452,13 @@ class API(object):
         if next_page is not None:
             page -= 1
         params['page'] = page
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result, pagination = request.get(
             '/microbiome/taxon_abundance', params=params, timeout=timeout)
         # TODO: upgrade in the future
@@ -455,7 +473,7 @@ class API(object):
         return ret
 
     def get_func_abundance(self, biosample_id, catalog, ids=None, limit=50,
-                           next_page=None, **params):
+                           next_page=None, timeout=None, **params):
         """获取功能丰度
 
         Args:
@@ -465,6 +483,7 @@ class API(object):
             ids (str, 非必填): BGE物种功能编号，多个值以逗号隔开；
             limit (int, 非必填): 一页返回数量，默认值为 50；
             next_page (str, 非必填): 下一页，用于获取下一页数据；
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             Model: 功能丰度数据详情；
@@ -476,12 +495,13 @@ class API(object):
             'next_page': next_page,
             'limit': limit
         })
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.get(
             '/microbiome/func_abundance', params=params,
             timeout=timeout)
@@ -490,7 +510,8 @@ class API(object):
         return result
 
     def get_gene_abundance(self, biosample_id, catalog, data_type, ids=None,
-                           limit=None, next_page=None, **params):
+                           limit=None, next_page=None, timeout=None,
+                           **params):
         """获取基因丰度
 
         Args:
@@ -501,6 +522,7 @@ class API(object):
                                     如：igc_50,igc_51；
             limit (int, 非必填): 一页最大返回数量，默认 50，最大值为 1000；
             next_page (str, 非必填): 接口返回的下一页参数；
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             Model: 基因丰度数据详情；
@@ -513,37 +535,52 @@ class API(object):
             'next_page': next_page,
             'limit': limit
         })
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.get(
             '/microbiome/gene_abundance', params=params, timeout=timeout)
         result = models.Model(result)
         result['result'] = [models.Model(item) for item in result['result']]
         return result
 
-    def get_upload_token(self, **kwargs):
+    def get_upload_token(self, timeout=None, **kwargs):
         """获取文件上传授权
         
         获取的授权仅包括当前目录（不含子目录）下的文件读、写权限；
 
+        Args:
+            timeout (int, 非必填): 超时时间；
+
         Returns:
             Model: 授权数据；
         """
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.post('/sts/token', data=kwargs, timeout=timeout)
         return models.Model(result)
 
-    def upload(self, filename, file_or_string):
-        token = self.get_upload_token()
+    def upload(self, filename, file_or_string, timeout=None):
+        """上传文件
+
+        Args:
+            filename (str): 生物样品编号；
+            file_or_string (file-like-object or str): 文件内容或类文件对象；
+            timeout (int, 非必填): 超时时间；
+
+        Returns:
+            object_name: 文件的 OSS 对象名；
+        """
+        token = self.get_upload_token(timeout=timeout)
         credentials = token.credentials
         destination = token.destination
         bucket_name = token.bucket
@@ -559,7 +596,7 @@ class API(object):
         return object_name
 
     def get_download_url(self, object_name, region=None,
-                         expiration_time=600, **kwargs):
+                         expiration_time=600, timeout=None, **kwargs):
         """获取阿里云OSS（对象存储）中的文件下载地址
 
         Args:
@@ -567,6 +604,7 @@ class API(object):
             region (str, 非必填): 区域（domestic、international），默认值为
                                  domestic；
             expiration_time (int, 非必填): 下载地址过期时间，默认值 600s；
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             Model: 文件下载地址；
@@ -578,17 +616,19 @@ class API(object):
             'region': region,
             'expiration_time': expiration_time
         })
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.post('/oss/sign_url', data=data, timeout=timeout)
         return models.Model(result)
 
     def download(self, object_name, fp, region=None,
-                 expiration_time=600, chunk_size=8192, **kwargs):
+                 expiration_time=600, chunk_size=8192, timeout=None,
+                 **kwargs):
         """下载存储在阿里云OSS（对象存储）中的文件
 
         Args:
@@ -598,16 +638,18 @@ class API(object):
                                  domestic；
             chunk_size(int): 下载块大小
             expiration_time (int, 非必填): 下载地址过期时间，默认值 600s；
+            timeout (int, 非必填): 超时时间；
         """
         inst = self.get_download_url(
-            object_name, region=None, expiration_time=600, **kwargs)
+            object_name, region=None, expiration_time=600, timeout=timeout,
+            **kwargs)
         size = 0
         prog_size = 61  # 单行输出的进度条固定为 80 个字符长度
         url = inst.url
         chunk_size = int(chunk_size)
         self.logger.debug('\n\tStart downloading: %s' % object_name)
         try:
-            with requests.get(url, stream=True) as r:
+            with requests.get(url, stream=True, timeout=timeout) as r:
                 total = int(r.headers['content-length'])
                 for chunk in r.iter_content(chunk_size):
                     size += len(chunk)
@@ -627,9 +669,25 @@ class API(object):
         except Exception as e:
             raise BGEError(e)
 
-    def range_stream(self, data_element_id, start_time=None, end_time=None,
-                     biosample_id=None, sort_direction=None, limit=100,
-                     next_page=None, **kwargs):
+    def get_range_stream(self, data_element_id, biosample_id=None,
+                         start_time=None, end_time=None,
+                         sort_direction=None, limit=100, next_page=None,
+                         timeout=None, **kwargs):
+        """返回查询数据流
+        
+        
+        Args:
+            biosample_id (str, 非必填): 生物样品编号，客户端模式下为必填；
+            start_time (str, 非必填): 数据流生成时间的起始时间
+            end_time (str, 非必填): 数据流生成时间的结束时间
+            sort_direction (str, 非必填): 排序方式，默认：desc
+            limit (int, 非必填): 每页返回数量，默认:100
+            next_page (str, 非必填): 下一页参数
+            timeout (int, 非必填): 超时时间；
+        
+        Returns:
+            Model: 返回的数据流数据
+        """
         params = {}
         params.update(kwargs)
         params.update({
@@ -641,21 +699,23 @@ class API(object):
             'limit': limit,
             'next_page': next_page
         })
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.get(
             '/stream/range', params=params, timeout=timeout)
         return models.Model(result)
 
-    def invoke_model(self, model_id, **kwargs):
+    def invoke_model(self, model_id, timeout=None, **kwargs):
         """模型调用
 
         Args:
             model_id (str): 模型编号；
+            timeout (int, 非必填): 超时时间；
             **kwargs: 模型相关参数，由模型定义的参数决定；
 
         Returns:
@@ -663,12 +723,13 @@ class API(object):
         """
         params = {}
         params.update(kwargs)
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         model_url = '/model/{}'.format(model_id)
         result = request.get(model_url, params=params, timeout=timeout)
         return models.Model(result)
@@ -703,22 +764,22 @@ class API(object):
         files = {
             'source_file': open(source_file, 'rb')
         }
-        timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.post(
             '/model/deploy', data=data, files=files, timeout=timeout)
         return models.Model(result)
 
-    def rollback_model(self, model_id, version, **kwargs):
+    def rollback_model(self, model_id, version, timeout=None, **kwargs):
         """回滚模型
 
         Args:
             model_id (str): 模型编号。
             version (int): 模型版本号。
+            timeout (int, 非必填): 超时时间；
 
         Returns:
             [str]: 模型回滚成功后返回的新的版本号
@@ -729,12 +790,13 @@ class API(object):
             'model_id': model_id,
             'version': version
         })
-        timeout = self.timeout
+        if timeout is None:
+            timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
-        request.set_authorization(self.access_token)
+        request.set_authorization(self.token_type, self.access_token)
         result = request.post(
             '/model/rollback', data=data, timeout=timeout)
         return models.Model(result)

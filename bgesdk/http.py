@@ -23,7 +23,6 @@ class HTTPRequest(object):
         verbose (布尔, 非必填)：输出测试日志，默认值为 False；
     """
 
-
     def __init__(self, endpoint, max_retries=3, verbose=False):
         self.logger = new_logger(self.__class__.__name__, verbose=verbose)
         self.endpoint = endpoint
@@ -35,13 +34,14 @@ class HTTPRequest(object):
             self.session.mount(
                 'https://', HTTPAdapter(max_retries=max_retries))
 
-    def set_authorization(self, access_token):
+    def set_authorization(self, token_type, access_token):
         """设置 Authorization 头部
 
         Args:
             access_token (str): 访问令牌
         """
-        self.headers['Authorization'] = 'Bearer {}'.format(access_token)
+        self.headers['Authorization'] = '{} {}'.format(
+            token_type, access_token)
 
     def get(self, path, params=None, timeout=None):
         """GET 接口请求
