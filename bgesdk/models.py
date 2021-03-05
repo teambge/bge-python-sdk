@@ -36,7 +36,7 @@ class Model(UserDict):
         }
         >>> m = Model(demo)
         >>> print(m)
-        Model({'y': {'y1': 'y1'}, 'x': [{'x1': 'x1'}]})
+        Model({'y': Model({'y1': 'y1'}), 'x': [Model({'x1': 'x1'})]})
         >>> j = m.json()
         >>> print(type(j))
         <type 'dict'>
@@ -59,10 +59,10 @@ class Model(UserDict):
     """
 
     def __init__(self, data):
-        UserDict.__init__(self, data)
         ret = {}
-        for key, val in self.data.items():
+        for key, val in data.items():
             ret[key] = self._encode_data(val)
+        UserDict.__init__(self, ret)
 
     def __getattr__(self, name):
         try:
