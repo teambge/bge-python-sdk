@@ -1,5 +1,7 @@
 #-*- coding: utf-8 -*-
 
+from __future__ import unicode_literals
+
 import json
 
 
@@ -14,8 +16,8 @@ class APIError(BGEError):
         self.code = int(code)
         self.msg = msg
         self.data = data
-        super(BGEError, self).__init__(json.dumps({
-            'code': code,
-            'msg': msg,
-            'data': data
-        }, indent=4, ensure_ascii=False))
+        super(APIError, self).__init__({
+            'code': self.code,
+            'msg': self.msg,
+            'data': self.data
+        })
