@@ -920,7 +920,7 @@ with open('demo/test.txt', 'wb') as fp:
 ```
 
 
-## range_stream
+## get_range_stream
 
 根据数据流数据生成时间范围获取数据。
 
@@ -951,10 +951,11 @@ api = API(
 namespace = 'test'
 fundamental_entity_id = '8be21998-7c8a-11eb-86eb-48a47299ee4a'
 data_element_id = '02393f70-c7e4-11e9-bfed-00163e104c79'
-ret = api.range_stream(
+ret = api.get_range_stream(
     data_element_id, biosample_id='E-B1234213412'
     start_time='1970-01', end_time='2021-04-01 10:11:00.123456')
 print(ret)
+print(ret.result[0].stream_id == ret.result[0]['stream_id'])
 ```
 
 ![Success](https://img.shields.io/badge/Output-Success-green)
@@ -1020,6 +1021,7 @@ print(ret)
         "count": 3,
         "next_page": null
     })
+>>> True
 ```
 
 
