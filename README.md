@@ -70,7 +70,7 @@ $ python setup.py install
 
 # SDK 文档
 
-更加详细的 SDK 文档请查看 [SDK Documents](https://api.bge.genomics.cn/doc/bge-python-sdk/)。
+更加详细的 SDK 文档请查看 [SDK Documents](https://api.bge.genomics.cn/doc/#/sdk/README)。
 
 # 快速开始
 
