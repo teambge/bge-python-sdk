@@ -281,11 +281,6 @@ def init_parser():
         help='调用最新灰度版本模型。'
     )
     run_p.add_argument(
-        '-b',
-        '--biosample_id',
-        help='生物样品编号'
-    )
-    run_p.add_argument(
         '-t',
         '--timeout',
         default=18,
