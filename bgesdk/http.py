@@ -1,15 +1,12 @@
 #-*- coding: utf-8 -*-
 
-from .error import APIError, BGEError
-from .utils import major_version, new_logger
+import requests
 
 from requests.adapters import HTTPAdapter
-if major_version <= 2:
-    from urlparse import urljoin
-else:
-    from urllib.parse import urljoin
+from six.moves.urllib.parse import urljoin
 
-import requests
+from .error import APIError, BGEError
+from .utils import new_logger
 
 
 class HTTPRequest(object):
@@ -19,11 +16,11 @@ class HTTPRequest(object):
 
     Args:
         endpoint (str): 平台基本地址，如 https://api.bge.genomics.cn；
-        max_retries (数字, 非必填): 接口请求重试次数，默认值为 3；
+        max_retries (数字, 非必填): 接口请求重试次数，默认值为 None；
         verbose (布尔, 非必填)：输出测试日志，默认值为 False；
     """
 
-    def __init__(self, endpoint, max_retries=3, verbose=False):
+    def __init__(self, endpoint, max_retries=None, verbose=False):
         self.logger = new_logger(self.__class__.__name__, verbose=verbose)
         self.endpoint = endpoint
         self.headers = {}

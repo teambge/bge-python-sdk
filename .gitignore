@@ -10,3 +10,4 @@ docs/_static/
 docs/_templates/
 .tox/
 test_env.sh
+.vscode/

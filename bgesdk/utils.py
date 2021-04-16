@@ -1,18 +1,14 @@
 #-*- coding: utf-8 -*-
 
 import logging
-import sys
 
-try:
-    from http.client import HTTPConnection
-except ImportError:
-    from httplib import HTTPConnection
+from six.moves import http_client
 
 
 def new_logger(name, verbose=False):
     logging.basicConfig()
     if verbose:
-        HTTPConnection.debuglevel = 0
+        http_client.HTTPConnection.debuglevel = 0
         requests_log = logging.getLogger("urllib3")
         requests_log.setLevel(logging.INFO)
         requests_log.propagate = False
@@ -23,10 +19,3 @@ def new_logger(name, verbose=False):
         logger = logging.getLogger(name)
         logger.setLevel(logging.INFO)
         return logger
-
-
-def get_major_version():
-    return sys.version_info.major
-
-
-major_version = get_major_version()

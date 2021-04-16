@@ -20,14 +20,10 @@ from . import constants
 from . import models
 from .error import BGEError
 from .http import HTTPRequest
-from .utils import major_version, new_logger
+from .utils import new_logger
 
-if major_version <= 2:
-    from urllib import urlencode
-    from urlparse import urljoin
-else:
-    from urllib.parse import urljoin, urlencode
 from shutil import copyfile
+from six.moves.urllib.parse import urljoin, urlencode
 from weakref import proxy
 
 import oss2
@@ -78,7 +74,7 @@ class OAuth2(object):
     alive = alive
 
     def __init__(self, client_id, client_secret, endpoint=None,
-                 max_retries=3, timeout=18, verbose=False):
+                 max_retries=None, timeout=18, verbose=False):
         self.client_id = client_id
         self.client_secret = client_secret
         if endpoint is None:
@@ -219,7 +215,7 @@ class API(object):
     alive = alive
     token_type = 'Bearer'
 
-    def __init__(self, access_token, endpoint=None, max_retries=3,
+    def __init__(self, access_token, endpoint=None, max_retries=None,
                  timeout=18, verbose=False):
         self.access_token = access_token
         if endpoint is None:
@@ -712,16 +708,19 @@ class API(object):
         result = request.get(model_url, params=params, timeout=timeout)
         return models.Model(result)
 
-    def deploy_model(self, model_id, source_file, runtime=None,
+    def deploy_model(self, model_id, object_name=None, runtime=None,
                      memory_size=None, timeout=None, **kwargs):
         """部署模型
 
         Args:
             model_id (str): 模型编号。
-            source_file (str): 模型源代码 zip 文件路径。
+            object_name (str): 模型源代码文件阿里云 OSS 对象路径。
             runtime (str, optional): 运行环境版本。默认值：python3。
             memory_size (int, optional): 内存占用量，单位：MB。默认：128MB。
             timeout (int, 非必填): 模型运行超时时间，单位：秒。默认：900。
+
+        Returns:
+            Model: 任务id，时间和状态；
         """
         data = {}
         data.update(kwargs)
@@ -729,19 +728,18 @@ class API(object):
             'model_id': model_id,
             'runtime': runtime,
             'memory_size': memory_size,
-            'timeout': timeout
+            'timeout': timeout,
+            'object_name': object_name
         })
-        files = {
-            'source_file': open(source_file, 'rb')
-        }
         timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
-        request.post(
-            '/model/deploy', data=data, files=files, timeout=timeout)
+        result = request.post(
+            '/model/deploy', data=data, timeout=timeout)
+        return models.Model(result)
 
     def publish_model(self, model_id, message, **kwargs):
         """发布模型稳定版
@@ -770,7 +768,7 @@ class API(object):
             '/model/publish', data=data, timeout=timeout)
         return models.Model(result)
 
-    def rollback_model(self, model_id, version, message, **kwargs):
+    def rollback_model(self, model_id, version, **kwargs):
         """回滚模型
 
         Args:
@@ -784,8 +782,7 @@ class API(object):
         data.update(kwargs)
         data.update({
             'model_id': model_id,
-            'version': version,
-            'message': message
+            'version': version
         })
         timeout = self.timeout
         verbose = self.verbose
@@ -795,4 +792,48 @@ class API(object):
         request.set_authorization(self.token_type, self.access_token)
         result = request.post(
             '/model/rollback', data=data, timeout=timeout)
+        return models.Model(result)
+
+    def model_versions(self, model_id, limit=10, next_page=None, **kwargs):
+        """模型历史版本列表
+
+        Args:
+            model_id (str): 模型编号。
+            limit (int): 每页返回数量，默认值为 10。
+            next_page (int): 下一页；
+
+        Returns:
+            [list]: 模型历史版本列表
+        """
+        params = {}
+        params.update(kwargs)
+        params['limit'] = limit
+        params['next_page'] = next_page
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        model_url = '/model/{}/versions'.format(model_id)
+        result = request.get(model_url, params=params, timeout=timeout)
+        return models.Model(result)
+
+    def task(self, task_id):
+        """模型历史版本列表
+
+        Args:
+            task_id (str): 任务编号。
+
+        Returns:
+            Model: 任务id、时间、状态和返回值；
+        """
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        model_url = '/task/{}'.format(task_id)
+        result = request.get(model_url, timeout=timeout)
         return models.Model(result)

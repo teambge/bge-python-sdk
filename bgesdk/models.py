@@ -1,15 +1,9 @@
 #-*- coding: utf-8 -*-
 
-from .utils import major_version
-
-if major_version <= 2:
-    from UserDict import UserDict
-else:
-    from collections import UserDict
-from weakref import proxy
-
 import json
 
+from six.moves import UserDict
+from weakref import proxy
 
 class Model(UserDict):
     """统一的接口返回数据包装模型类
