@@ -616,16 +616,24 @@ def model_versions(args):
     except APIError as e:
         print('获取模型版本列表失败：{}'.format(e))
         sys.exit(1)
-    print('模型 {} 已发布版本：'.format(model_id))
-    size = None
-    for item in result['result']:
+    print('第 {} 页，模型 {} 已发布版本：'.format(next_page or 1, model_id))
+    print('...')
+    length = None
+    items = result['result']
+    for item in items:
         version = item['version']
         message = item['message']
         create_time = datetime.fromtimestamp(item['create_time'])
-        if size is None:
-            size = len(str(version))
+        if length is None:
+            length = len(str(version))
         print('发布时间：{}，版本号：{}，发布记录：{}'.format(
-            create_time, str(version).rjust(size), message))
+            create_time, str(version).rjust(length), message))
+    print('...')
+    size = len(items)
+    if size == 0 or size < limit or next_page == result['next_page']:
+        print('下一页：无')
+    else:
+        print('下一页：{}'.format(result['next_page']))
 
 
 def run_model(args):
