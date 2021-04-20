@@ -183,14 +183,6 @@ def init_parser(subparsers):
     )
     install_p.set_defaults(method=install_deps, parser=install_p)
 
-    # 打包命令
-    build_p = model_subparsers.add_parser(
-        'build',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        help='打包模型源码为 zip 文件'
-    )
-    build_p.set_defaults(method=build_zip, parser=build_p)
-
     start_p = model_subparsers.add_parser(
         'start',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -389,23 +381,6 @@ def write_model_config(args):
     print('解读模型配置已保存至：{}'.format(config_path))
 
 
-def build_zip(args):
-    home = get_home()
-    build_dir = join(home, '.bge', 'build')
-    config_path = get_model_config_path()
-    config = get_config_parser(config_path)
-    section_name = DEFAULT_MODEL_SECTION
-    model_id = config_get(config.get, section_name, 'model_id')
-    with tempfile.NamedTemporaryFile(suffix='.zip') as tmp:
-        with zipfile.ZipFile(tmp.name, 'w', zipfile.ZIP_DEFLATED) as zf:
-            _zip_codedir(home, zf)
-        tmp.flush()
-        tmp.seek(0)
-        zip_path = join(build_dir, 'model-{}.zip'.format(model_id))
-        shutil.copy(tmp.name, zip_path)
-    print('模型源码包已打包完成：{}'.format(zip_path))
-
-
 def deploy_model(args):
     """部署模型"""
     ignore_source = args.ignore_source
@@ -442,6 +417,9 @@ def deploy_model(args):
             tmp.seek(0)
             print('打包成功')
             size_mb = '%.2f' % (size / 1024.0 / 1024.0)
+            if size > 100 * 1024 * 1024:
+                print('打包后 zip 文件大小 {}，最大限制 100MB'.format(size_mb))
+                exit(1)
             print('打包 zip 文件大小为：{}MB'.format(size_mb))
             print('开始上传模型源码...')
             try:
