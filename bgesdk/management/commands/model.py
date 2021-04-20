@@ -13,6 +13,7 @@ import tempfile
 import zipfile
 
 from datetime import datetime
+from pimento import menu
 from posixpath import join, exists, abspath, isdir, relpath, dirname, split
 from six.moves import input
 from time import sleep
@@ -83,17 +84,27 @@ MODEL_CONFIGS = [
     ('runtime', {
         'default': 'python3',
         'type': 'str',
-        'description': '运行环境'
+        'description': '运行环境',
+        'choices': [
+            'python3',
+            'python2.7'
+        ]
     }),
     ('memory_size', {
         'default': '128',
         'type': 'int',
-        'description': '内存占用'
+        'description': '内存占用（MB）',
+        'choices': [
+            128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832,
+            896, 960, 1024, 1088, 1152, 1216, 1280, 1344, 1408, 1472, 1536,
+            1600, 1664, 1728, 1792, 1856, 1920, 1984, 2048
+        ]
     }),
     ('timeout', {
         'default': '900',
         'type': 'int',
-        'description': '模型运行超时时间'
+        'description': '模型运行超时时间',
+        'range': [1, 900]
     })
 ]
 
@@ -107,6 +118,23 @@ TOTAL_PROGRESS = {
     'STARTED': '任务已开始',
     'SUCCESS': '任务执行成功'
 }
+
+def input_integer(text, min_value=None, max_value=None):
+    while True:
+        input_value = input(text)
+        if not input_value:
+            return str(input_value)
+        try:
+            input_value = int(input_value)
+        except ValueError:
+            print('类型错误，请输入整数')
+            continue
+        if (min_value is not None and input_value < min_value) \
+                or (max_value is not None and input_value > max_value):
+            print('整数范围超出限制：[{}, {}]'.format(
+                min_value or 'null', max_value or 'null'))
+            continue
+        return str(input_value)
 
 
 def init_parser(subparsers):
@@ -362,12 +390,29 @@ def write_model_config(args):
         else:
             raise ValueError('invalid type: {}'.format(type_))
         secure = conf.get('secure')
+        range_ = conf.get('range')
+        choices = conf.get('choices')
         description = conf.get('description', '')
         value = saved_value or conf.get('default', '')
         if secure and value:
             value = secure_str(value)
-        input_value = input(
-            '？请输入{} {} [{}]：'.format(description, key, value))
+        if choices:
+            try:
+                default_index = choices.index(value)
+            except ValueError:
+                default_index = 0
+            input_value = menu(
+                choices,
+                '？请选择{} {} [{}]'.format(description, key, value),
+                "请输入选择: ", default_index=default_index, indexed=True)
+        elif range_:
+            min_, max_ = range_[0], range_[1]
+            input_value = input_integer(
+                '？请输入{} {} [{}]，取值范围 {}-{}：'.format(
+                    description, key, value, min_, max_), min_, max_)
+        else:
+            input_value = input(
+                '？请输入{} {} [{}]：'.format(description, key, value))
         if input_value:
             config.set(section_name, key, input_value)
         elif saved_value is None:
