@@ -761,6 +761,15 @@ def start_model(args):
         print('请先安装 docker')
         sys.exit(1)
     client = docker.from_env()
+    try:
+        client.images.get(image_name)
+    except docker.errors.NotFound:
+        print('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
+        return_code = os.system('docker pull {}'.format(image_name))
+        if return_code != 0:
+            print('镜像拉取失败，请重试')
+            sys.exit(1)
+        print('镜像拉取成功')
     command = 'sh -c "python /server/app.py"'
     pwd_info = pwd.getpwuid(os.getuid())
     uid = pwd_info.pw_uid
