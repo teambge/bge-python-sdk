@@ -791,7 +791,6 @@ def start_model(args):
         stop_signal='SIGINT',
         ports={TEST_SERVER_PORT: TEST_SERVER_PORT},
         user='{}:{}'.format(uid, gid),
-        tty=True,
         detach=True,
         stream=True,
         auto_remove=True)
