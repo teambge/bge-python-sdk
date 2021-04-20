@@ -53,7 +53,7 @@ BGE 开放平台 API 基于 OAuth 2.0 开发，并使用 SSL/TLS 加密传输，
 推荐使用 pip 进行安装。
 
 ```shell
-$ pip install bge-python-sdk
+$ pip install -U bge-python-sdk
 ```
 
 或者
