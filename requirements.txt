@@ -4,3 +4,4 @@ idna
 requests
 urllib3
 oss2
+docker

@@ -14,23 +14,26 @@ import zipfile
 
 from datetime import datetime
 from posixpath import join, exists, abspath, isdir, relpath, dirname, split
-from six.moves import configparser, input
+from six.moves import input
 from time import sleep
 from uuid import uuid4
 
 from bgesdk.client import OAuth2, API
 from bgesdk.error import APIError
-from bgesdk.management.utils import get_user_home, get_active_project, \
-                    config_get, secure_str, get_home, get_config_path, \
-                    read_config, generate_container_name
-from bgesdk.management.constants import DEFAULT_MODEL_SECTION, \
-                        DEFAULT_OAUTH2_SECTION, DEFAULT_TOKEN_SECTION
+from bgesdk.management import constants
+from bgesdk.management.utils import get_active_project, config_get, \
+                                    secure_str, get_home, read_config, \
+                                    generate_container_name, \
+                                    get_config_parser
+from bgesdk.version import __version__
 
-if six.PY2:
-    ConfigParser = configparser.SafeConfigParser
-else:
-    ConfigParser = configparser.ConfigParser
 
+DEFAULT_OAUTH2_SECTION = constants.DEFAULT_OAUTH2_SECTION
+DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
+DEFAULT_MODEL_SECTION = constants.DEFAULT_MODEL_SECTION
+DEFAULT_MODEL_TIMEOUT = constants.DEFAULT_MODEL_TIMEOUT
+TEST_SERVER_ENDPOINT = constants.TEST_SERVER_ENDPOINT
+TEST_SERVER_PORT = constants.TEST_SERVER_PORT
 
 model_match = re.compile(r'^[a-zA-Z0-9]{15}$').match
 
@@ -67,10 +70,10 @@ runtime = python3
 '''
 
 RUNTIMES = {
-    'python2.7': 'python:2.7',
-    'python3': 'python:3.6'
+    'python2.7': 'teambge/model-python2.7:{}'.format(__version__),
+    'python3': 'teambge/model-python3.6:{}'.format(__version__)
 }
-
+WORKDIR = '/code'
 
 MODEL_CONFIGS = [
     ('model_id', {
@@ -113,7 +116,7 @@ def init_parser(subparsers):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         help='模型初始化脚手架、配置、部署等相关命令。'
     )
-    model_p.set_defaults(method=_print_subparser_help, parser=model_p)
+    model_p.set_defaults(method=print_subparser_help, parser=model_p)
     model_subparsers = model_p.add_subparsers(
         dest='subcommand',
         help='可选子命令。'
@@ -188,6 +191,13 @@ def init_parser(subparsers):
     )
     build_p.set_defaults(method=build_zip, parser=build_p)
 
+    start_p = model_subparsers.add_parser(
+        'start',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        help='启动本地 HTTP 测试服务器'
+    )
+    start_p.set_defaults(method=start_model, parser=start_p)
+
     # 部署子命令
     deploy_p = model_subparsers.add_parser(
         'deploy',
@@ -201,14 +211,7 @@ def init_parser(subparsers):
         action="store_true",
         help='部署时不包含模型源代码'
     )
-    deploy_p.add_argument(
-        '-t',
-        '--timeout',
-        default=None,
-        type=int,
-        help='HTTP 请求超时时间。'
-    )
-    deploy_p.set_defaults(method=_deploy_model, parser=deploy_p)
+    deploy_p.set_defaults(method=deploy_model, parser=deploy_p)
     publish_p = model_subparsers.add_parser(
         'publish',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -220,14 +223,45 @@ def init_parser(subparsers):
         type=str,
         help='模型发布说明。'
     )
-    publish_p.add_argument(
-        '-t',
-        '--timeout',
-        default=18,
-        type=int,
-        help='请求超时时间，可覆盖默认配置。'
+    publish_p.set_defaults(method=publish_model, parser=publish_p)
+
+    # 运行模型子命令
+    run_p = model_subparsers.add_parser(
+        'run',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        help='调用线上稳定版模型。'
     )
-    publish_p.set_defaults(method=_publish_model, parser=publish_p)
+    group = run_p.add_mutually_exclusive_group()
+    group.add_argument(
+        '-d',
+        '--draft',
+        default=False,
+        action="store_true",
+        help='调用最新灰度版本模型。'
+    )
+    group.add_argument(
+        '-t',
+        '--test',
+        default=False,
+        action="store_true",
+        help='调用本地启动的测试服务器运行模型。'
+    )
+    group = run_p.add_mutually_exclusive_group()
+    group.add_argument(
+        '-a',
+        '--args',
+        nargs=2,
+        action='append',
+        help='参数对，示例：--args f1 v1 --args f2 v2'
+    )
+    group.add_argument(
+        '-f',
+        '--file',
+        help='JSON 格式参数文件，内容示例：{ "f1": "v1", "f2": "v2" }。'
+    )
+    run_p.set_defaults(method=run_model, parser=run_p)
+
+    # 回滚子命令
     rollback_p = model_subparsers.add_parser(
         'rollback',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -240,6 +274,8 @@ def init_parser(subparsers):
         help='要回滚的模型版本。'
     )
     rollback_p.set_defaults(method=rollback_model, parser=rollback_p)
+
+    # 回滚版本列表子命令
     versions_p = model_subparsers.add_parser(
         'versions',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -260,43 +296,8 @@ def init_parser(subparsers):
     )
     versions_p.set_defaults(method=model_versions, parser=versions_p)
 
-    # 运行模型
-    run_p = model_subparsers.add_parser(
-        'run',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        help='调用线上稳定版模型。'
-    )
-    run_p.add_argument(
-        '-d',
-        '--draft',
-        default=False,
-        action="store_true",
-        help='调用最新灰度版本模型。'
-    )
-    run_p.add_argument(
-        '-t',
-        '--timeout',
-        default=18,
-        type=int,
-        help='请求超时时间，可覆盖默认配置。'
-    )
-    group = run_p.add_mutually_exclusive_group()
-    group.add_argument(
-        '-a',
-        '--args',
-        nargs=2,
-        action='append',
-        help='参数对，示例：--args f1 v1 --args f2 v2'
-    )
-    group.add_argument(
-        '-f',
-        '--file',
-        help='JSON 格式参数文件，内容示例：{ "f1": "v1", "f2": "v2" }。'
-    )
-    run_p.set_defaults(method=_run_model, parser=run_p)
 
-
-def _print_subparser_help(args):
+def print_subparser_help(args):
     """打印 subparser 帮助信息"""
     parser = args.parser
     parser.print_help(sys.stderr)
@@ -353,8 +354,7 @@ def write_model_config(args):
     if args.show:
         return _read_model_project(args)
     config_path = get_model_config_path()
-    config = ConfigParser()
-    config.read(config_path)
+    config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     if section_name not in config.sections():
         config.add_section(section_name)
@@ -393,8 +393,7 @@ def build_zip(args):
     home = get_home()
     build_dir = join(home, '.bge', 'build')
     config_path = get_model_config_path()
-    config = ConfigParser()
-    config.read(config_path)
+    config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     model_id = config_get(config.get, section_name, 'model_id')
     with tempfile.NamedTemporaryFile(suffix='.zip') as tmp:
@@ -407,15 +406,13 @@ def build_zip(args):
     print('模型源码包已打包完成：{}'.format(zip_path))
 
 
-def _deploy_model(args):
+def deploy_model(args):
     """部署模型"""
-    timeout = args.timeout
     ignore_source = args.ignore_source
     home = get_home()
     project = get_active_project()
     config_path = get_model_config_path()
-    config = ConfigParser()
-    config.read(config_path)
+    config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     model_id = config_get(config.get, section_name, 'model_id')
     timestr = datetime.now().strftime('%Y%m%d%H%M%S%f')
@@ -431,7 +428,8 @@ def _deploy_model(args):
     config = read_config(project)
     access_token = config_get(config.get, token_section, 'access_token')
     endpoint = config_get(config.get, oauth2_section, 'endpoint')
-    api = API(access_token, endpoint=endpoint, timeout=timeout)
+    api = API(
+        access_token, endpoint=endpoint, timeout=DEFAULT_MODEL_TIMEOUT)
     object_name = None
     if not ignore_source:
         print('开始打包模型源码...')
@@ -500,15 +498,13 @@ def _zip_codedir(path, ziph):
             ziph.write(filepath, zip_relpath)
 
 
-def _publish_model(args):
+def publish_model(args):
     """发布模型到稳定版"""
-    timeout = args.timeout
     message = args.message
     home = get_home()
     project = get_active_project()
     config_path = get_model_config_path()
-    config = ConfigParser()
-    config.read(config_path)
+    config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     model_id = config_get(config.get, section_name, 'model_id')
     oauth2_section = DEFAULT_OAUTH2_SECTION
@@ -516,7 +512,8 @@ def _publish_model(args):
     config = read_config(project)
     access_token = config_get(config.get, token_section, 'access_token')
     endpoint = config_get(config.get, oauth2_section, 'endpoint')
-    api = API(access_token, endpoint=endpoint, timeout=timeout)
+    api = API(
+        access_token, endpoint=endpoint, timeout=DEFAULT_MODEL_TIMEOUT)
     try:
         result = api.publish_model(model_id, message)
     except APIError as e:
@@ -531,8 +528,7 @@ def rollback_model(args):
     home = get_home()
     project = get_active_project()
     config_path = get_model_config_path()
-    config = ConfigParser()
-    config.read(config_path)
+    config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     model_id = config_get(config.get, section_name, 'model_id')
     oauth2_section = DEFAULT_OAUTH2_SECTION
@@ -540,7 +536,8 @@ def rollback_model(args):
     config = read_config(project)
     access_token = config_get(config.get, token_section, 'access_token')
     endpoint = config_get(config.get, oauth2_section, 'endpoint')
-    api = API(access_token, endpoint=endpoint)
+    api = API(
+        access_token, endpoint=endpoint, timeout=DEFAULT_MODEL_TIMEOUT)
     try:
         result = api.rollback_model(model_id, version)
     except APIError as e:
@@ -580,8 +577,7 @@ def model_versions(args):
     home = get_home()
     project = get_active_project()
     config_path = get_model_config_path()
-    config = ConfigParser()
-    config.read(config_path)
+    config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     model_id = config_get(config.get, section_name, 'model_id')
     oauth2_section = DEFAULT_OAUTH2_SECTION
@@ -589,7 +585,8 @@ def model_versions(args):
     config = read_config(project)
     access_token = config_get(config.get, token_section, 'access_token')
     endpoint = config_get(config.get, oauth2_section, 'endpoint')
-    api = API(access_token, endpoint=endpoint)
+    api = API(
+        access_token, endpoint=endpoint, timeout=DEFAULT_MODEL_TIMEOUT)
     try:
         result = api.model_versions(
             model_id, limit=limit, next_page=next_page)
@@ -608,7 +605,7 @@ def model_versions(args):
             create_time, str(version).rjust(size), message))
 
 
-def _run_model(args):
+def run_model(args):
     params = {}
     if args.file:
         if not exists(args.file):
@@ -617,15 +614,16 @@ def _run_model(args):
         if isdir(args.file):
             print('存在文件夹：{}'.format(args.file))
             sys.exit(1)
+        with open(file, 'r') as fp:
+            params = json.load(fp)
     elif args.args:
         params = dict(args.args)
     draft = args.draft
-    timeout = args.timeout
+    test = args.test
     home = get_home()
     project = get_active_project()
     config_path = get_model_config_path()
-    config = ConfigParser()
-    config.read(config_path)
+    config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     model_id = config_get(config.get, section_name, 'model_id')
     oauth2_section = DEFAULT_OAUTH2_SECTION
@@ -633,10 +631,16 @@ def _run_model(args):
     config = read_config(project)
     access_token = config_get(config.get, token_section, 'access_token')
     endpoint = config_get(config.get, oauth2_section, 'endpoint')
-    api = API(access_token, endpoint=endpoint, timeout=timeout)
+    api = API(
+        access_token, endpoint=endpoint, timeout=DEFAULT_MODEL_TIMEOUT)
     try:
         if draft is True:
             result = api.invoke_draft_model(model_id, **params)
+        elif test is True:
+            api = API(
+                access_token, endpoint=TEST_SERVER_ENDPOINT,
+                timeout=DEFAULT_MODEL_TIMEOUT)
+            result = api.invoke_model(model_id, **params)
         else:
             result = api.invoke_model(model_id, **params)
     except APIError as e:
@@ -671,8 +675,7 @@ def install_deps(args):
     pkgs = ' '.join(package_name)
     home = get_home()
     config_path = get_model_config_path()
-    config = ConfigParser()
-    config.read(config_path)
+    config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     model_id = config_get(config.get, section_name, 'model_id')
     if not model_match(model_id):
@@ -687,45 +690,113 @@ def install_deps(args):
         deps.append(pkgs)
     if requirements:
         deps.append('-r {}'.format(requirements))
-    command = (
-        'pip install --upgrade --force-reinstall -t /mnt/model/lib {}'
-    ).format(' '.join(deps))
     docker_path = os.popen('which docker')
     if not docker_path:
-        pipe = os.popen(command)
-        print(pipe.read())
-        return
+        print('请先安装 docker')
+        sys.exit(1)
+    command = (
+        'pip install --upgrade --force-reinstall -t /code/lib {}'
+    ).format(' '.join(deps))
     try:
         client.images.get(image_name)
     except docker.errors.NotFound:
-        print('请先拉取，docker 镜像 {}'.format(image_name))
-        sys.exit(1)
+        print('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
+        return_code = os.system('docker pull {}'.format(image_name))
+        if return_code != 0:
+            print('镜像拉取失败，请重试')
+            sys.exit(1)
+        print('镜像拉取成功')
+    print('开始安装模型依赖包...')
     command = ('sh -c "{}"').format(command)
     pwd_info = pwd.getpwuid(os.getuid())
-    workdir = '/mnt/model'
+    uid = pwd_info.pw_uid
+    gid = pwd_info.pw_gid
     try:
         container = client.containers.get(container_name)
-    except (docker.errors.NotFound, docker.errors.APIError):
-        container = client.containers.run(
-            image_name,
-            name=container_name,
-            volumes={
-                home: {
-                    'bind': workdir,
-                    'mode': 'rw'
-                }
-            },
-            ports={
-                '10900/tcp': 0
-            },
-            user='{}:{}'.format(pwd_info.pw_uid, pwd_info.pw_gid),
-            tty=True,
-            detach=True,
-            stream=True,
-            auto_remove=False)
-    container.start()
-    logs = container.exec_run(
-        command, workdir=workdir, stream=True)
-    for log in logs.output:
-        print(log.rstrip().decode('utf-8'))
+        if container.status != 'exited':
+            try:
+                container.remove(force=True)
+            except:
+                pass
+    except docker.errors.NotFound:
+        pass
+    container = client.containers.run(
+        image_name,
+        command=command,
+        name=container_name,
+        volumes={home: { 'bind': WORKDIR, 'mode': 'rw' }},
+        stop_signal='SIGINT',
+        user='{}:{}'.format(uid, gid),
+        detach=True,
+        auto_remove=True)
+    try:
+        logs = container.logs(stream=True)
+        for log in logs:
+            sys.stdout.write(log.decode('utf-8'))
+            sys.stdout.flush()
+    finally:
+        if container.status != 'exited':
+            try:
+                container.remove(force=True)
+            except:
+                pass
     print('安装完成')
+
+
+def start_model(args):
+    print('Model debug server is starting ...')
+    home = get_home()
+    config_path = get_model_config_path()
+    config = get_config_parser(config_path)
+    section_name = DEFAULT_MODEL_SECTION
+    model_id = config_get(config.get, section_name, 'model_id')
+    if not model_match(model_id):
+        print('模型编号格式异常，仅支持正则 [a-zA-Z0-9]{15}')
+        sys.exit(1)
+    runtime = config_get(config.get, section_name, 'runtime')
+    image_name = RUNTIMES[runtime]
+    container_name = generate_container_name(model_id)
+    docker_path = os.popen('which docker')
+    if not docker_path:
+        print('请先安装 docker')
+        sys.exit(1)
+    client = docker.from_env()
+    command = 'sh -c "python /server/app.py"'
+    pwd_info = pwd.getpwuid(os.getuid())
+    uid = pwd_info.pw_uid
+    gid = pwd_info.pw_gid
+    try:
+        container = client.containers.get(container_name)
+        if container.status != 'exited':
+            try:
+                container.remove(force=True)
+            except:
+                pass
+    except docker.errors.NotFound:
+        pass
+    container = client.containers.run(
+        image_name,
+        command=command,
+        name=container_name,
+        volumes={home: { 'bind': WORKDIR, 'mode': 'rw' }},
+        stop_signal='SIGINT',
+        ports={TEST_SERVER_PORT: TEST_SERVER_PORT},
+        user='{}:{}'.format(uid, gid),
+        tty=True,
+        detach=True,
+        stream=True,
+        auto_remove=True)
+    print('Model {} was registered'.format(model_id))
+    print('\n\tURL: {}/model/{}'.format(TEST_SERVER_ENDPOINT, model_id))
+    print('\tMethod: GET\n')
+    try:
+        logs = container.logs(stream=True, follow=True)
+        for log in logs:
+            sys.stdout.write(log.decode('utf-8'))
+            sys.stdout.flush()
+    finally:
+        if container.status != 'exited':
+            try:
+                container.remove(force=True)
+            except:
+                pass
