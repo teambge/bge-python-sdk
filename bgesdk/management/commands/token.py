@@ -1,6 +1,4 @@
 import argparse
-import os
-import six
 import sys
 
 from bgesdk.client import OAuth2
@@ -8,14 +6,6 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.utils import get_active_project, config_get, \
                                     get_config_path, get_config_parser
-
-from posixpath import join, exists
-from six.moves import configparser, input
-
-if six.PY2:
-    ConfigParser = configparser.SafeConfigParser
-else:
-    ConfigParser = configparser.ConfigParser
 
 
 def init_parser(subparsers):
