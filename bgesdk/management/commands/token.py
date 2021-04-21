@@ -14,13 +14,6 @@ def init_parser(subparsers):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         help='获取、保存访问令牌。'
     )
-    token_p.add_argument(
-        '-s',
-        '--save',
-        default=True,
-        action='store_true',
-        help='保存令牌到全局配置。'
-    )
     token_p.set_defaults(method=handler, parser=token_p)
 
 
@@ -40,8 +33,7 @@ def handler(args):
     except APIError as e:
         print('令牌获取出错: {}'.format(e))
         sys.exit(1)
-    if args.save:
-        _write_token_config(project, token_result)
+    _write_token_config(project, token_result)
     print('令牌内容如下：')
     print('')
     for key in ['access_token', 'token_type', 'expires_in', 'scope']:
