@@ -209,6 +209,19 @@ def init_parser(subparsers):
         type=str,
         help='要安装的 Python 软件包依赖文件'
     )
+    install_p.add_argument(
+        '-U',
+        '--upgrade',
+        default=False,
+        action='store_true',
+        help='是否升级依赖包，同 pip install -U'
+    )
+    install_p.add_argument(
+        '--force-reinstall',
+        default=False,
+        action='store_true',
+        help='是否强制重新安装依赖包，同 pip install --force-reinstall'
+    )
     install_p.set_defaults(method=install_deps, parser=install_p)
 
     start_p = model_subparsers.add_parser(
@@ -357,9 +370,6 @@ def init_scaffold(args):
     model_config_path = join(scaffold_dir, 'model.ini')
     if not exists(model_config_path):
         open(model_config_path, 'w').write(model_config_template)
-    sys.stdout.write('正在安装 bge-python-sdk ... ')
-    os.system('pip install --no-deps bge-python-sdk -t {}'.format(lib_dir))
-    print('bgesdk 已经安装在目录 {} 中'.format(lib_dir))
     script_name = 'main.py'
     script_path = join(scaffold_dir, script_name)
     with open(script_path, 'wb') as file_out:
@@ -703,6 +713,8 @@ def _read_model_project(args):
 def install_deps(args):
     package_name = args.package_name
     requirements = args.requirements
+    upgrade = args.upgrade
+    force_reinstall = args.force_reinstall
     pkgs = ' '.join(package_name)
     home = get_home()
     config_path = get_model_config_path()
@@ -725,9 +737,13 @@ def install_deps(args):
     if not docker_path:
         print('请先安装 docker')
         sys.exit(1)
-    command = (
-        'pip install --upgrade --force-reinstall -t /code/lib {}'
-    ).format(' '.join(deps))
+    command = ['pip install']
+    if upgrade:
+        command.append('--upgrade')
+    if force_reinstall:
+        command.append('--force-reinstall')
+    command.append('-t /code/lib {}'.format(' '.join(deps)))
+    command = ' '.join(command)
     try:
         client.images.get(image_name)
     except docker.errors.NotFound:
