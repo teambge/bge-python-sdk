@@ -13,4 +13,4 @@ class TestModel:
         with pytest.raises(APIError) as e:
             api.invoke_model(model_id)
         assert e.value.code == 41202
-        assert e.value.msg.startswith(u'BGE 私有接口错误: 模型不存在')
+        assert e.value.msg.startswith(u'私有接口报错: 模型不存在')

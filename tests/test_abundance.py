@@ -1,9 +1,9 @@
 #-*- coding: utf-8 -*-
 
 from bgesdk.error import APIError
-from bgesdk.utils import major_version
 
 import pytest
+import six
 
 
 def check_result(result):
@@ -61,10 +61,7 @@ class TestGeneAbundance:
         next_page = result['next_page']
         assert isinstance(result['result'], list)
         assert isinstance(result['count'], int)
-        str_ = str
-        if major_version <= 2:
-            str_ = unicode
-        assert isinstance(next_page, str_) or next_page is None
+        assert next_page is None or isinstance(next_page, six.text_type)
 
     @pytest.mark.parametrize('catalog, data_type', [
         ('IGC_9.9M', 'list'),
