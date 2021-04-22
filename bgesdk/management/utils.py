@@ -56,7 +56,7 @@ def confirm(prompt=None):
     while True:
         ans = input(prompt)
         if ans not in ['y', 'Y', 'n', 'N']:
-            print('请输入 y 或 n')
+            print('请输入 Y 或 n')
             continue
         if ans == 'y' or ans == 'Y':
             return True

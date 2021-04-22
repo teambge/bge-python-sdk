@@ -25,7 +25,7 @@ from bgesdk.management import constants
 from bgesdk.management.utils import get_active_project, config_get, \
                                     secure_str, get_home, read_config, \
                                     generate_container_name, \
-                                    get_config_parser
+                                    get_config_parser, confirm
 from bgesdk.version import __version__
 
 
@@ -76,38 +76,14 @@ RUNTIMES = {
 }
 WORKDIR = '/code'
 
-MODEL_CONFIGS = [
-    ('model_id', {
-        'type': 'str',
-        'description': '解读模型编号'
-    }),
-    ('runtime', {
-        'default': 'python3',
-        'type': 'str',
-        'description': '运行环境',
-        'choices': [
-            'python3',
-            'python2.7'
-        ]
-    }),
-    ('memory_size', {
-        'default': '128',
-        'type': 'int',
-        'description': '内存占用（MB）',
-        'choices': [
-            128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832,
-            896, 960, 1024, 1088, 1152, 1216, 1280, 1344, 1408, 1472, 1536,
-            1600, 1664, 1728, 1792, 1856, 1920, 1984, 2048
-        ]
-    }),
-    ('timeout', {
-        'default': '900',
-        'type': 'int',
-        'description': '模型运行超时时间',
-        'range': [1, 900]
-    })
+RUNTIME_CHOICES = ['python3', 'python2.7']
+MEMORY_SIZE_CHOICES = [
+    128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832,
+    896, 960, 1024, 1088, 1152, 1216, 1280, 1344, 1408, 1472, 1536,
+    1600, 1664, 1728, 1792, 1856, 1920, 1984, 2048
 ]
-
+MIN_TIMEOUT = 1
+MAX_TIMEOUT = 900
 
 TOTAL_PROGRESS = {
     'FAILURE': '任务执行失败',
@@ -118,23 +94,6 @@ TOTAL_PROGRESS = {
     'STARTED': '任务已开始',
     'SUCCESS': '任务执行成功'
 }
-
-def input_integer(text, min_value=None, max_value=None):
-    while True:
-        input_value = input(text)
-        if not input_value:
-            return str(input_value)
-        try:
-            input_value = int(input_value)
-        except ValueError:
-            print('类型错误，请输入整数')
-            continue
-        if (min_value is not None and input_value < min_value) \
-                or (max_value is not None and input_value > max_value):
-            print('整数范围超出限制：[{}, {}]'.format(
-                min_value or 'null', max_value or 'null'))
-            continue
-        return str(input_value)
 
 
 def init_parser(subparsers):
@@ -161,13 +120,6 @@ def init_parser(subparsers):
         help='脚手架名字。'
     )
     init_p.add_argument(
-        '-f',
-        '--force',
-        default=False,
-        action='store_true',
-        help='强制初始化。'
-    )
-    init_p.add_argument(
         '--home',
         type=str,
         default=home,
@@ -188,7 +140,7 @@ def init_parser(subparsers):
         action='store_true',
         help='打印显示当前模型脚手架的配置。'
     )
-    config_p.set_defaults(method=write_model_config, parser=config_p)
+    config_p.set_defaults(method=config_model, parser=config_p)
 
     # 安装 Python 依赖包
     install_p = model_subparsers.add_parser(
@@ -339,20 +291,17 @@ def print_subparser_help(args):
 def init_scaffold(args):
     scaffold_name = args.scaffold_name
     home = args.home
-    force = args.force
     if home is None:
         home = get_home()
     scaffold_dir = join(home, scaffold_name)
-    if not force:
-        if not exists(home):
-            print('错误！无法找到 home 目录 %s。' % home)
-            return
-        if exists(scaffold_dir):
-            print('错误！脚手架 %s 已经存在。' % scaffold_dir)
-            return
-    else:
-        if not exists(scaffold_dir):
-            os.makedirs(scaffold_dir)
+    if exists(scaffold_dir):
+        print('错误！{} 已存在 '.format(scaffold_dir))
+        sys.exit(1)
+    if not exists(home):
+        print('错误！无法找到 home 目录 {}。'.format(home))
+        sys.exit(1)
+    model_id, runtime, memory_size, timeout = _config_model()
+    os.makedirs(scaffold_dir)
     bge_dir = join(scaffold_dir, '.bge')
     lib_dir = join(scaffold_dir, 'lib')
     for dir_ in [scaffold_dir, bge_dir, lib_dir]:
@@ -364,7 +313,7 @@ def init_scaffold(args):
         elif not isdir(dir_):
             print('失败')
             print('失败！{} 存在但不是目录。'.format(dir_))
-            return
+            sys.exit(1)
         else:
             print('已存在')
     model_config_path = join(scaffold_dir, 'model.ini')
@@ -376,64 +325,173 @@ def init_scaffold(args):
         file_out.write(main_py.encode())
     st = os.stat(script_path)
     os.chmod(script_path, st.st_mode | stat.S_IEXEC)
-    print('成功初始化')
+    _save_model_config(
+        model_id, runtime, memory_size, timeout, home=scaffold_dir)
+    if confirm('是否安装 bge-python-sdk？'):
+        os.chdir(scaffold_dir)
+        _install_sdk()
+    print('成功创建模型项目脚手架')
 
 
-def write_model_config(args):
-    """写入模型配置"""
+def config_model(args):
     if args.show:
         return _read_model_project(args)
     config_path = get_model_config_path()
+    config_parser = get_config_parser(config_path)
+    model_id, runtime, memory_size, timeout = _config_model(config_parser)
+    _save_model_config(model_id, runtime, memory_size, timeout)
+
+
+def _config_model(config=None):
+    print('开始配置解读模型...')
+    default_model_id = ''
+    default_runtime = 'python3'
+    default_memory_size = 128
+    default_timeout = 900
+    if config is not None:
+        section_name = DEFAULT_MODEL_SECTION
+        default_model_id = config_get(config.get, section_name, 'model_id')
+        default_runtime = config_get(config.get, section_name, 'runtime')
+        default_memory_size = config_get(
+            config.getint, section_name, 'memory_size')
+        default_timeout = config_get(
+            config.getint, section_name, 'timeout')
+    # model_id
+    prompt = '？请输入解读模型编号 [{}]：'.format(default_model_id)
+    while True:
+        model_id = input(prompt)
+        if model_id:
+            break
+        if not default_model_id:
+            print('模型编号未设置...')
+            continue
+        model_id = default_model_id
+        break
+    # runtime
+    try:
+        index = RUNTIME_CHOICES.index(default_runtime)
+    except IndexError:
+        index = 0
+    prompt = '？请选择运行环境 [{}]'.format(default_runtime)
+    input_prompt = "请选择: "
+    runtime = menu(
+        RUNTIME_CHOICES, prompt, input_prompt, default_index=index,
+        indexed=True)
+    # memory_size
+    try:
+        index = MEMORY_SIZE_CHOICES.index(default_memory_size)
+    except IndexError:
+        index = 0
+    prompt = '？请选择内存占用（MB） [{}]'.format(default_memory_size)
+    input_prompt = "请选择: "
+    memory_size = menu(
+        MEMORY_SIZE_CHOICES, prompt, input_prompt, default_index=index,
+        indexed=True)
+    # timeout
+    prompt = '？请输入模型运行超时时间 [{}]：'.format(default_timeout)
+    while True:
+        timeout = input(prompt)
+        if not timeout:
+            if not default_timeout:
+                print('模型运行时间未设置...')
+                continue
+            timeout = default_timeout
+        else:
+            try:
+                timeout = int(timeout)
+            except ValueError:
+                print('请输入整数...')
+                continue
+        if (MIN_TIMEOUT and timeout < MIN_TIMEOUT) \
+                or (MAX_TIMEOUT and timeout > MAX_TIMEOUT):
+            print('超出范围 [{},{}]，请重新输入'.format(
+                MIN_TIMEOUT or '', MAX_TIMEOUT or ''))
+            continue
+        break
+    if not timeout:
+        timeout = default_timeout
+    return model_id, runtime, memory_size, timeout
+
+
+def _save_model_config(model_id, runtime, memory_size, timeout, home=None):
+    # save
+    config_path = get_model_config_path(home=home)
     config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     if section_name not in config.sections():
         config.add_section(section_name)
-    print('请输入解读模型部署配置：\n')
-    for key, conf in MODEL_CONFIGS:
-        type_ = conf['type']
-        if 'str' == type_:
-            saved_value = config_get(config.get, section_name, key)
-        elif 'int' == type_:
-            saved_value = config_get(config.getint, section_name, key)
-        elif 'bool' == type_:
-            saved_value = config_get(config.getboolean, section_name, key)
-        else:
-            raise ValueError('invalid type: {}'.format(type_))
-        secure = conf.get('secure')
-        range_ = conf.get('range')
-        choices = conf.get('choices')
-        description = conf.get('description', '')
-        value = saved_value or conf.get('default', '')
-        if secure and value:
-            value = secure_str(value)
-        if choices:
-            try:
-                default_index = choices.index(value)
-            except ValueError:
-                default_index = 0
-            input_value = menu(
-                choices,
-                '？请选择{} {} [{}]'.format(description, key, value),
-                "请输入选择: ", default_index=default_index, indexed=True)
-        elif range_:
-            min_, max_ = range_[0], range_[1]
-            input_value = input_integer(
-                '？请输入{} {} [{}]，取值范围 {}-{}：'.format(
-                    description, key, value, min_, max_), min_, max_)
-        else:
-            input_value = input(
-                '？请输入{} {} [{}]：'.format(description, key, value))
-        if input_value:
-            config.set(section_name, key, input_value)
-        elif saved_value is None:
-            if conf.get('default') is not None:
-                config.set(section_name, key, conf.get('default'))
-            else:
-                config.set(section_name, key, '')
+    print('开始保存解读模型配置...')
+    print('配置文件 {}'.format(config_path))
+    config.set(section_name, 'model_id', model_id)
+    config.set(section_name, 'runtime', runtime)
+    config.set(section_name, 'memory_size', str(memory_size))
+    config.set(section_name, 'timeout', str(timeout))
     with open(config_path, 'w') as config_file:
         config.write(config_file)
     print('')
     print('解读模型配置已保存至：{}'.format(config_path))
+    
+
+def _install_sdk():
+    home = get_home()
+    config_path = get_model_config_path()
+    config = get_config_parser(config_path)
+    section_name = DEFAULT_MODEL_SECTION
+    model_id = config_get(config.get, section_name, 'model_id')
+    runtime = config_get(config.get, section_name, 'runtime')
+    image_name = RUNTIMES[runtime]
+    container_name = generate_container_name(model_id)
+    deps = []
+    docker_path = os.popen('which docker')
+    if not docker_path:
+        print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
+        sys.exit(1)
+    client = docker.from_env()
+    command = 'pip install --no-deps bge-python-sdk pimento -t /code/lib'
+    try:
+        client.images.get(image_name)
+    except docker.errors.NotFound:
+        print('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
+        return_code = os.system('docker pull {}'.format(image_name))
+        if return_code != 0:
+            print('镜像拉取失败，请重试')
+            sys.exit(1)
+        print('镜像拉取成功')
+    print('开始安装模型依赖包...')
+    command = ('sh -c "{}"').format(command)
+    pwd_info = pwd.getpwuid(os.getuid())
+    uid = pwd_info.pw_uid
+    gid = pwd_info.pw_gid
+    try:
+        container = client.containers.get(container_name)
+        if container.status != 'exited':
+            try:
+                container.remove(force=True)
+            except:
+                pass
+    except docker.errors.NotFound:
+        pass
+    container = client.containers.run(
+        image_name,
+        command=command,
+        name=container_name,
+        volumes={home: { 'bind': WORKDIR, 'mode': 'rw' }},
+        stop_signal='SIGINT',
+        user='{}:{}'.format(uid, gid),
+        detach=True,
+        auto_remove=True)
+    try:
+        logs = container.logs(stream=True)
+        for log in logs:
+            sys.stdout.write(log.decode('utf-8'))
+            sys.stdout.flush()
+    finally:
+        if container.status != 'exited':
+            try:
+                container.remove(force=True)
+            except:
+                pass
+    print('安装完成')
 
 
 def deploy_model(args):
@@ -691,8 +749,9 @@ def run_model(args):
     print(json.dumps(result.json(), indent=4, ensure_ascii=False))
 
 
-def get_model_config_path():
-    home = get_home()
+def get_model_config_path(home=None):
+    if home is None:
+        home = get_home()
     config_dir = join(home, '.bge')
     model_config_path = join(home, 'model.ini')
     if not exists(model_config_path) or not exists(config_dir):
@@ -721,12 +780,8 @@ def install_deps(args):
     config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     model_id = config_get(config.get, section_name, 'model_id')
-    if not model_match(model_id):
-        print('模型编号格式异常，仅支持正则 [a-zA-Z0-9]{15}')
-        sys.exit(1)
     runtime = config_get(config.get, section_name, 'runtime')
     image_name = RUNTIMES[runtime]
-    client = docker.from_env()
     container_name = generate_container_name(model_id)
     deps = []
     if pkgs:
@@ -735,8 +790,9 @@ def install_deps(args):
         deps.append('-r {}'.format(requirements))
     docker_path = os.popen('which docker')
     if not docker_path:
-        print('请先安装 docker')
+        print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
         sys.exit(1)
+    client = docker.from_env()
     command = ['pip install']
     if upgrade:
         command.append('--upgrade')
@@ -797,15 +853,12 @@ def start_model(args):
     config = get_config_parser(config_path)
     section_name = DEFAULT_MODEL_SECTION
     model_id = config_get(config.get, section_name, 'model_id')
-    if not model_match(model_id):
-        print('模型编号格式异常，仅支持正则 [a-zA-Z0-9]{15}')
-        sys.exit(1)
     runtime = config_get(config.get, section_name, 'runtime')
     image_name = RUNTIMES[runtime]
     container_name = generate_container_name(model_id)
     docker_path = os.popen('which docker')
     if not docker_path:
-        print('请先安装 docker')
+        print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
         sys.exit(1)
     client = docker.from_env()
     try:
