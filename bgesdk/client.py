@@ -471,8 +471,7 @@ class API(object):
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
         result = request.get(
-            '/microbiome/func_abundance', params=params,
-            timeout=timeout)
+            '/microbiome/func_abundance', params=params, timeout=timeout)
         result = models.Model(result)
         result['result'] = [models.Model(item) for item in result['result']]
         return result
@@ -604,6 +603,7 @@ class API(object):
         url = inst.url
         chunk_size = int(chunk_size)
         self.logger.debug('\n\tStart downloading: %s' % object_name)
+        timeout = self.timeout
         try:
             with requests.get(url, stream=True, timeout=timeout) as r:
                 total = int(r.headers['content-length'])
