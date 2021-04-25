@@ -39,15 +39,13 @@ TEST_SERVER_PORT = constants.TEST_SERVER_PORT
 model_match = re.compile(r'^[a-zA-Z0-9]{15}$').match
 
 main_py = '''\
-import sys
-sys.path.insert(0, './lib')
-
 import json
 import bgesdk
 
 def handler(event, context):
     event = json.loads(event)
     biosample_id = event['biosample_id']
+    access_token = event['access_token']
     params = event['params']
     return json.dumps({
         "model_code": 0,
@@ -57,7 +55,7 @@ def handler(event, context):
             'params': params,
             'sdk': {
                 'version': bgesdk.__version__
-            },
+            }
         }
     })
 '''
