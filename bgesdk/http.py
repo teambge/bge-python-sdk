@@ -40,21 +40,23 @@ class HTTPRequest(object):
         self.headers['Authorization'] = '{} {}'.format(
             token_type, access_token)
 
-    def get(self, path, params=None, timeout=None):
+    def get(self, path, params=None, headers=None, timeout=None):
         """GET 接口请求
 
         Args:
             path (str): 请求路径
             params (dict, 非必填): GET 参数；
+            headers (dict, 非必填): HTTP 头部；
             timeout (int, 非必填): 请求超时时间；
 
         Returns:
             object: 请求返回值
         """
         return self._request(
-            'GET', path, params=params, timeout=timeout)
+            'GET', path, params=params, headers=headers, timeout=timeout)
 
-    def post(self, path, params=None, data=None, files=None, timeout=None):
+    def post(self, path, params=None, data=None, files=None, headers=None,
+             timeout=None):
         """POST
 
         Args:
@@ -62,6 +64,7 @@ class HTTPRequest(object):
             params (dict, 非必填): GET 参数；
             data (dict, 非必填): POST 参数；
             files (dict, 非必填): 文件参数；
+            headers (dict, 非必填): HTTP 头部；
             timeout (int, 非必填): 请求超时时间；
 
         Returns:
@@ -69,9 +72,9 @@ class HTTPRequest(object):
         """
         return self._request(
             'POST', path, params=params, data=data, files=files,
-            timeout=timeout)
+            headers=headers, timeout=timeout)
 
-    def _request(self, method, path, timeout=None, **kwargs):
+    def _request(self, method, path, timeout=None, headers=None, **kwargs):
         """发送 HTTP 请求
 
         Args:
@@ -85,12 +88,14 @@ class HTTPRequest(object):
         Returns:
             object: 返回值
         """
-        headers = self.headers
+        if headers is None:
+            headers = self.headers
+        else:
+            headers.update(self.headers)
         url = urljoin(self.endpoint, path)
         self.logger.debug(
             ('Request: \n\tmethod: %s\n\turl: %s\n\theaders: %s\n\ttimeout'
-             ': %s\n\t**kwargs=%s'),
-            method, url, headers, timeout, kwargs)
+             ': %s\n\t**kwargs=%s'), method, url, headers, timeout, kwargs)
         try:
             resp = self.session.request(
                 method=method, url=url, headers=headers, timeout=timeout,

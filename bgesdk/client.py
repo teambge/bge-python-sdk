@@ -20,9 +20,12 @@ from . import constants
 from . import models
 from .error import BGEError
 from .http import HTTPRequest
-from .utils import new_logger
+from .utils import new_logger, human_byte
 
+from posixpath import split
+from requests_toolbelt.multipart import encoder
 from shutil import copyfile
+from six import text_type
 from six.moves.urllib.parse import urljoin, urlencode
 from weakref import proxy
 
@@ -67,14 +70,14 @@ class OAuth2(object):
         endpoint (字符串, 非必填): 平台对外服务的访问域名，
                                  默认值为 https://api.bge.genomics.cn；
         max_retries (数字, 非必填): 接口请求重试次数，默认值为 3；
-        timeout (数字, 非必填): 接口请求默认超时间，默认值为 18；
+        timeout (数字, 非必填): 接口请求默认超时间，默认值为 None；
         verbose (布尔, 非必填)：输出测试日志，默认值为 False；
     """
 
     alive = alive
 
     def __init__(self, client_id, client_secret, endpoint=None,
-                 max_retries=None, timeout=18, verbose=False):
+                 max_retries=None, timeout=None, verbose=False):
         self.client_id = client_id
         self.client_secret = client_secret
         if endpoint is None:
@@ -216,7 +219,7 @@ class API(object):
     token_type = 'Bearer'
 
     def __init__(self, access_token, endpoint=None, max_retries=None,
-                 timeout=18, verbose=False):
+                 timeout=None, verbose=False):
         self.access_token = access_token
         if endpoint is None:
             endpoint = constants.DEFAULT_ENDPOINT
@@ -539,6 +542,13 @@ class API(object):
         Returns:
             object_name: 文件的 OSS 对象名；
         """
+        def progress_callback(bytes_consumed, total_bytes):
+            self.logger.info(
+                '文件大小：{}, 上传进度: {}%，已上传 {}'.format(
+                    human_byte(total_bytes, 2),
+                    '%.2f' % ((bytes_consumed / total_bytes) * 100),
+                    human_byte(bytes_consumed, 2)
+            ))
         token = self.get_upload_token()
         credentials = token.credentials
         destination = token.destination
@@ -551,7 +561,9 @@ class API(object):
             access_key_id, access_key_secret, security_token)
         bucket = oss2.Bucket(auth, endpoint, bucket_name)
         object_name = '%s/%s' % (destination, filename)
-        bucket.put_object(object_name, file_or_string)
+        bucket.put_object(
+            object_name, file_or_string,
+            progress_callback=progress_callback)
         return object_name
 
     def get_download_url(self, object_name, region=None,
@@ -817,6 +829,48 @@ class API(object):
         request.set_authorization(self.token_type, self.access_token)
         model_url = '/model/{}/versions'.format(model_id)
         result = request.get(model_url, params=params, timeout=timeout)
+        return models.Model(result)
+
+    def upload_model_expfs(self, model_id, expfs, **kwargs):
+        """上传模型扩展文件集
+
+        Args:
+            model_id (str): 模型编号。
+            expfs (path): 模型扩展文件集。
+
+        Returns:
+            Model: 任务id、时间、状态和返回值；
+        """
+        if isinstance(expfs, text_type):
+            filename = split(expfs)[1]
+        else:
+            filename = expfs.name
+        def upload_callback(monitor):
+            total_bytes = monitor.len
+            bytes_consumed = monitor.bytes_read
+            self.logger.info(
+                '文件大小：{}, 上传进度: {}%，已上传 {}'.format(
+                    human_byte(total_bytes, 2),
+                    '%.2f' % ((bytes_consumed / total_bytes) * 100),
+                    human_byte(bytes_consumed, 2)
+            ))
+        e = encoder.MultipartEncoder(
+            fields={
+                'model_id': model_id,
+                'expfs': (filename, open(expfs, 'rb'), 'application/zip')
+            }
+        )
+        m = encoder.MultipartEncoderMonitor(e, upload_callback)
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        model_url = '/model/expfs/upload'
+        result = request.post(model_url, data=m, timeout=timeout, headers={
+            'Content-Type': m.content_type
+        })
         return models.Model(result)
 
     def task(self, task_id):

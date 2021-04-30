@@ -19,3 +19,14 @@ def new_logger(name, verbose=False):
         logger = logging.getLogger(name)
         logger.setLevel(logging.INFO)
         return logger
+
+
+def human_byte(size, dot=2):
+    size = float(size)
+    if size < pow(1024, 2):
+        size = str(round(size / pow(1024, 1), dot)) + 'KB'
+    elif pow(1024, 2) <= size < pow(1024, 3):
+        size = str(round(size / pow(1024, 2), dot)) + 'MB'
+    else:
+        size = str(round(size / pow(1024, 3), dot)) + 'GB'
+    return size
