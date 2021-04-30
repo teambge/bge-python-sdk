@@ -181,6 +181,13 @@ def init_parser(subparsers):
     )
     start_p.set_defaults(method=start_model, parser=start_p)
 
+    expfs_p = model_subparsers.add_parser(
+        'expfs',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        help='扩展模型文件集'
+    )
+    expfs_p.set_defaults(method=upload_model_expfs, parser=expfs_p)
+
     # 部署子命令
     deploy_p = model_subparsers.add_parser(
         'deploy',
@@ -492,6 +499,55 @@ def _install_sdk():
     print('安装完成')
 
 
+def upload_model_expfs(args):
+    home = get_home()
+    project = get_active_project()
+    config_path = get_model_config_path()
+    config = get_config_parser(config_path)
+    section_name = DEFAULT_MODEL_SECTION
+    model_id = config_get(config.get, section_name, 'model_id')
+    oauth2_section = DEFAULT_OAUTH2_SECTION
+    token_section = DEFAULT_TOKEN_SECTION
+    config = read_config(project)
+    access_token = config_get(config.get, token_section, 'access_token')
+    endpoint = config_get(config.get, oauth2_section, 'endpoint')
+    api = API(
+        access_token, endpoint=endpoint, timeout=DEFAULT_MODEL_TIMEOUT)
+    try:
+        result = api.upload_model_expfs(model_id, 'uploadtest.zip')
+    except APIError as e:
+        print('上传模型扩展集失败：{}'.format(e))
+        sys.exit(1)
+    task_id = result.task_id
+    print('上传模型扩展集任务：{}'.format(task_id))
+    task_path = join(home, '.bge', 'expfs.task_id')
+    with open(task_path, 'w') as f:
+        f.write(task_id)
+    print('上传模型扩展集任务返回结果：')
+    seconds = 0
+    while True:
+        result = api.task(task_id)
+        progress = result.progress
+        if progress not in TOTAL_PROGRESS:
+            print('已等待 {}s，任务状态异常：{}'.format(seconds, progress))
+            try:
+                os.unlink(task_path)
+            except (IOError, OSError):
+                pass
+            sys.exit(1)
+        print('已等待 {}s，{}'.format(seconds, TOTAL_PROGRESS[progress]))
+        if progress in ('SUCCESS', 'FAILURE', 'REVOKED'):
+            break
+        sleep(1)
+        seconds += 1
+    try:
+        os.unlink(task_path)
+    except (IOError, OSError):
+        pass
+    print('模型 {} 上传模型扩展集成功。'.format(model_id))
+
+
+
 def deploy_model(args):
     """部署模型"""
     ignore_source = args.ignore_source
@@ -705,13 +761,14 @@ def model_versions(args):
 def run_model(args):
     params = {}
     if args.file:
-        if not exists(args.file):
-            print('文件不存在：{}'.format(args.file))
+        filepath = args.file
+        if not exists(filepath):
+            print('文件不存在：{}'.format(filepath))
             sys.exit(1)
-        if isdir(args.file):
-            print('存在文件夹：{}'.format(args.file))
+        if isdir(filepath):
+            print('存在文件夹：{}'.format(filepath))
             sys.exit(1)
-        with open(file, 'r') as fp:
+        with open(filepath, 'r') as fp:
             params = json.load(fp)
     elif args.args:
         params = dict(args.args)
