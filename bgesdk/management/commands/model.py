@@ -5,6 +5,7 @@ import os
 import pkgutil
 import pwd
 import re
+import requests
 import shutil
 import six
 import stat
@@ -452,6 +453,11 @@ def _install_sdk():
         print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
         sys.exit(1)
     client = docker.from_env()
+    try:
+        client.ping()
+    except requests.exceptions.ConnectionError:
+        print('请确认 docker 服务是否已开启。')
+        sys.exit(1)
     command = 'pip install --no-deps bge-python-sdk pimento -t /code/lib'
     try:
         client.images.get(image_name)
@@ -628,7 +634,12 @@ def deploy_model(args):
         os.unlink(task_path)
     except (IOError, OSError):
         pass
-    print('模型 {} 灰度部署成功。'.format(model_id))
+    if 'SUCCESS' == progress:
+        print('模型 {} 灰度部署成功。'.format(model_id))
+    elif 'FAILURE' == progress:
+        print('模型 {} 灰度部署失败。任务结果：{}'.format(model_id, result))
+    elif 'REVOKED' == progress:
+        print('模型 {} 灰度部署任务已被撤销。'.format(model_id))
 
 
 def _zip_codedir(path, ziph):
@@ -848,6 +859,11 @@ def install_deps(args):
         print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
         sys.exit(1)
     client = docker.from_env()
+    try:
+        client.ping()
+    except requests.exceptions.ConnectionError:
+        print('请确认 docker 服务是否已开启。')
+        sys.exit(1)
     command = ['pip install']
     if upgrade:
         command.append('--upgrade')
@@ -916,6 +932,11 @@ def start_model(args):
         print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
         sys.exit(1)
     client = docker.from_env()
+    try:
+        client.ping()
+    except requests.exceptions.ConnectionError:
+        print('请确认 docker 服务是否已开启。')
+        sys.exit(1)
     try:
         client.images.get(image_name)
     except docker.errors.NotFound:
