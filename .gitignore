@@ -1,0 +1,13 @@
+.idea/
+*.pyc
+bge_python_sdk.egg-info/
+build/
+dist/
+bgesdk/__pycache__/
+tests/__pycache__/
+docs/_build/
+docs/_static/
+docs/_templates/
+.tox/
+test_env.sh
+.vscode/
