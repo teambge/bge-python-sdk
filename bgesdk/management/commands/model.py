@@ -452,11 +452,11 @@ def _install_sdk():
     if not docker_path:
         print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
         sys.exit(1)
-    client = docker.from_env()
     try:
-        client.ping()
-    except requests.exceptions.ConnectionError:
+        client = docker.from_env()
+    except docker.errors.DockerException:
         print('请确认 docker 服务是否已开启。')
+        print('启动命令：/etc/init.d/docker start')
         sys.exit(1)
     command = 'pip install --no-deps bge-python-sdk pimento -t /code/lib'
     try:
@@ -858,11 +858,11 @@ def install_deps(args):
     if not docker_path:
         print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
         sys.exit(1)
-    client = docker.from_env()
     try:
-        client.ping()
-    except requests.exceptions.ConnectionError:
+        client = docker.from_env()
+    except docker.errors.DockerException:
         print('请确认 docker 服务是否已开启。')
+        print('启动命令：/etc/init.d/docker start')
         sys.exit(1)
     command = ['pip install']
     if upgrade:
@@ -931,11 +931,11 @@ def start_model(args):
     if not docker_path:
         print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
         sys.exit(1)
-    client = docker.from_env()
     try:
-        client.ping()
-    except requests.exceptions.ConnectionError:
+        client = docker.from_env()
+    except docker.errors.DockerException:
         print('请确认 docker 服务是否已开启。')
+        print('启动命令：/etc/init.d/docker start')
         sys.exit(1)
     try:
         client.images.get(image_name)
