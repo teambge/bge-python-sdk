@@ -550,8 +550,12 @@ def upload_model_expfs(args):
         os.unlink(task_path)
     except (IOError, OSError):
         pass
-    print('模型 {} 上传模型扩展集成功。'.format(model_id))
-
+    if 'SUCCESS' == progress:
+        print('模型 {} 上传模型扩展集成功。'.format(model_id))
+    elif 'FAILURE' == progress:
+        print('模型 {} 上传模型扩展集失败。'.format(model_id))
+    elif 'REVOKED' == progress:
+        print('模型 {} 上传模型扩展集任务已被撤销。'.format(model_id))
 
 
 def deploy_model(args):
@@ -600,7 +604,7 @@ def deploy_model(args):
             except APIError as e:
                 print('上传模型源码失败：{}'.format(e))
                 sys.exit(1)
-            print('上传成功')
+            print('\n上传成功')
     print('模型部署中...')
     try:
         result = api.deploy_model(
@@ -724,7 +728,13 @@ def rollback_model(args):
         os.unlink(task_path)
     except (IOError, OSError):
         pass
-    print('模型 {} 灰度版已成功回滚至版本 {}。'.format(model_id, version))
+    if 'SUCCESS' == progress:
+        print('模型 {} 灰度版已成功回滚至版本 {}。'.format(model_id, version))
+    elif 'FAILURE' == progress:
+        print('模型 {} 灰度回滚至版本 {} 失败。任务结果：{}'.format(
+            model_id, version, result))
+    elif 'REVOKED' == progress:
+        print('模型 {} 灰度回滚至版本 {} 任务已被撤销失败。'.format(model_id, version))
 
 
 def model_versions(args):
