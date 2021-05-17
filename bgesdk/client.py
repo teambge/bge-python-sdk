@@ -543,12 +543,13 @@ class API(object):
             object_name: 文件的 OSS 对象名；
         """
         def progress_callback(bytes_consumed, total_bytes):
-            self.logger.info(
-                '文件大小：{}, 上传进度: {}%，已上传 {}'.format(
+            sys.stdout.write(
+                '\r文件大小：{}, 上传进度: {}%，已上传 {}'.format(
                     human_byte(total_bytes, 2),
                     '%.2f' % ((bytes_consumed / total_bytes) * 100),
                     human_byte(bytes_consumed, 2)
             ))
+            sys.stdout.flush()
         token = self.get_upload_token()
         credentials = token.credentials
         destination = token.destination
@@ -564,6 +565,7 @@ class API(object):
         bucket.put_object(
             object_name, file_or_string,
             progress_callback=progress_callback)
+        sys.stdout.write('')
         return object_name
 
     def get_download_url(self, object_name, region=None,
@@ -848,12 +850,14 @@ class API(object):
         def upload_callback(monitor):
             total_bytes = monitor.len
             bytes_consumed = monitor.bytes_read
-            self.logger.info(
-                '文件大小：{}, 上传进度: {}%，已上传 {}'.format(
+            sys.stdout.write(
+                '\r文件大小：{}, 上传进度: {}%，已上传 {}'.format(
                     human_byte(total_bytes, 2),
                     '%.2f' % ((bytes_consumed / total_bytes) * 100),
                     human_byte(bytes_consumed, 2)
-            ))
+                )
+            )
+            sys.stdout.flush()
         e = encoder.MultipartEncoder(
             fields={
                 'model_id': model_id,
@@ -871,6 +875,7 @@ class API(object):
         result = request.post(model_url, data=m, timeout=timeout, headers={
             'Content-Type': m.content_type
         })
+        sys.stdout.write('')
         return models.Model(result)
 
     def task(self, task_id):
