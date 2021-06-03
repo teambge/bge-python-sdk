@@ -678,6 +678,41 @@ class API(object):
             '/stream/range', params=params, timeout=timeout)
         return models.Model(result)
 
+    def get_data_items(self, namespace, biosample_id,
+                       collection_id=None, data_element_ids=None,
+                       next_page=None, **kwargs):
+        """根据数据元编号或数据集编号获取数据项
+
+        Args:
+            namespace（str）：命名空间
+            biosample_id (str): 生物样品编号；
+            collection_id（str，非必填）：数据集编号，与 data_element_ids 互斥；
+            data_element_ids (str，非必填): 多个数据元编号，逗号分割（必填）；
+                                           最多一次提供100个；
+            next_page (int，非必填): 下一页；
+
+        Returns:
+            Model: 返回的数据项数据；
+        """
+        params = {}
+        params.update(kwargs)
+        params.update({
+            'biosample_id': biosample_id,
+            'data_element_ids': data_element_ids,
+            'collection_id': collection_id,
+            'namespace': namespace,
+            'next_page': next_page
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.get(
+            '/data_item/batch_retrieve', params=params, timeout=timeout)
+        return models.Model(result)
+
     def invoke_model(self, model_id, **kwargs):
         """模型调用
 
@@ -879,7 +914,7 @@ class API(object):
         return models.Model(result)
 
     def task(self, task_id):
-        """模型历史版本列表
+        """获取任务结果
 
         Args:
             task_id (str): 任务编号。
