@@ -543,12 +543,13 @@ class API(object):
             object_name: 文件的 OSS 对象名；
         """
         def progress_callback(bytes_consumed, total_bytes):
-            self.logger.info(
-                '文件大小：{}, 上传进度: {}%，已上传 {}'.format(
+            sys.stdout.write(
+                '\r文件大小：{}, 上传进度: {}%，已上传 {}'.format(
                     human_byte(total_bytes, 2),
                     '%.2f' % ((bytes_consumed / total_bytes) * 100),
                     human_byte(bytes_consumed, 2)
             ))
+            sys.stdout.flush()
         token = self.get_upload_token()
         credentials = token.credentials
         destination = token.destination
@@ -564,6 +565,7 @@ class API(object):
         bucket.put_object(
             object_name, file_or_string,
             progress_callback=progress_callback)
+        sys.stdout.write('')
         return object_name
 
     def get_download_url(self, object_name, region=None,
@@ -674,6 +676,41 @@ class API(object):
         request.set_authorization(self.token_type, self.access_token)
         result = request.get(
             '/stream/range', params=params, timeout=timeout)
+        return models.Model(result)
+
+    def get_data_items(self, namespace, biosample_id,
+                       collection_id=None, data_element_ids=None,
+                       next_page=None, **kwargs):
+        """根据数据元编号或数据集编号获取数据项
+
+        Args:
+            namespace（str）：命名空间
+            biosample_id (str): 生物样品编号；
+            collection_id（str，非必填）：数据集编号，与 data_element_ids 互斥；
+            data_element_ids (str，非必填): 多个数据元编号，逗号分割（必填）；
+                                           最多一次提供100个；
+            next_page (int，非必填): 下一页；
+
+        Returns:
+            Model: 返回的数据项数据；
+        """
+        params = {}
+        params.update(kwargs)
+        params.update({
+            'biosample_id': biosample_id,
+            'data_element_ids': data_element_ids,
+            'collection_id': collection_id,
+            'namespace': namespace,
+            'next_page': next_page
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.get(
+            '/data_item/batch_retrieve', params=params, timeout=timeout)
         return models.Model(result)
 
     def invoke_model(self, model_id, **kwargs):
@@ -848,12 +885,14 @@ class API(object):
         def upload_callback(monitor):
             total_bytes = monitor.len
             bytes_consumed = monitor.bytes_read
-            self.logger.info(
-                '文件大小：{}, 上传进度: {}%，已上传 {}'.format(
+            sys.stdout.write(
+                '\r文件大小：{}, 上传进度: {}%，已上传 {}'.format(
                     human_byte(total_bytes, 2),
                     '%.2f' % ((bytes_consumed / total_bytes) * 100),
                     human_byte(bytes_consumed, 2)
-            ))
+                )
+            )
+            sys.stdout.flush()
         e = encoder.MultipartEncoder(
             fields={
                 'model_id': model_id,
@@ -871,10 +910,11 @@ class API(object):
         result = request.post(model_url, data=m, timeout=timeout, headers={
             'Content-Type': m.content_type
         })
+        sys.stdout.write('')
         return models.Model(result)
 
     def task(self, task_id):
-        """模型历史版本列表
+        """获取任务结果
 
         Args:
             task_id (str): 任务编号。
