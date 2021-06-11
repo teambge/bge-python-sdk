@@ -458,7 +458,8 @@ def _install_sdk():
         print('请确认 docker 服务是否已开启。')
         print('启动命令：/etc/init.d/docker start')
         sys.exit(1)
-    command = 'pip install --no-deps bge-python-sdk pimento -t /code/lib'
+    command = ('pip install --no-deps bge-python-sdk pimento '
+               'requests_toolbelt -t /code/lib')
     try:
         client.images.get(image_name)
     except docker.errors.NotFound:
