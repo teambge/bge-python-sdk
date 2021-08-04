@@ -931,3 +931,24 @@ class API(object):
         model_url = '/task/{}'.format(task_id)
         result = request.get(model_url, timeout=timeout)
         return models.Model(result)
+
+    def upload_model_doc(self, doc):
+        """上传模型文档
+        
+        Args:
+            doc_tab (str): 文档所在的 tab。
+            model_id (str): 模型编号。
+            doc_content (list): 文档内容
+        Returns:
+            Model_id: 模型编号；
+            version: 文档版本号。
+        """
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.post(
+            '/model/doc_upload', data=doc, timeout=timeout)
+        return models.Model(result)
