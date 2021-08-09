@@ -29,6 +29,7 @@ from six import text_type
 from six.moves.urllib.parse import urljoin, urlencode
 from weakref import proxy
 
+import json
 import oss2
 import requests
 import sys
@@ -932,7 +933,7 @@ class API(object):
         result = request.get(model_url, timeout=timeout)
         return models.Model(result)
 
-    def upload_model_doc(self, doc):
+    def upload_model_doc(self, doc_tab, model_id, doc_content):
         """上传模型文档
         
         Args:
@@ -943,6 +944,11 @@ class API(object):
             Model_id: 模型编号；
             version: 文档版本号。
         """
+        data = {}
+        data['doc_tab'] = doc_tab
+        data['model_id'] = model_id
+        data['doc_content'] = doc_content
+        doc = json.dumps(data)
         timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
