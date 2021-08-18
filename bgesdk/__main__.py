@@ -10,6 +10,7 @@ except ImportError:
     pass
 
 from . import version
+from .management.command import BaseCommand
 from .management.utils import get_commands
 
 
@@ -30,15 +31,20 @@ def init_parser():
         dest='command',
         help='SDK 命令行工具可选子命令。'
     )
-    command_names = ['config', 'workon', 'token', 'model']
-    for command_name in get_commands():
-        if command_name in command_names:
-            continue
-        command_names.append(command_name)
-    for command_name in command_names:
+    command_names = get_commands()
+    sort_items = []
+    for sub_command_name in command_names:
         module = import_module(
-            'bgesdk.management.commands.{}'.format(command_name))
-        module.init_parser(subparsers)
+            'bgesdk.management.commands.{}'.format(sub_command_name)
+        )
+        command_klass = getattr(module, 'Command', None)
+        if command_klass and not issubclass(command_klass, BaseCommand):
+            continue
+        order = int(getattr(command_klass, 'order', 1))
+        sort_items.append((order, sub_command_name, command_klass))
+    sort_items.sort()
+    for _, sub_command_name, command_klass in sort_items:
+        command_klass(subparsers, sub_command_name)
     return parser
 
 

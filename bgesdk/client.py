@@ -24,16 +24,13 @@ from .utils import new_logger, human_byte
 
 from posixpath import split
 from requests_toolbelt.multipart import encoder
-from shutil import copyfile
 from six import text_type
 from six.moves.urllib.parse import urljoin, urlencode
-from weakref import proxy
 
+import json
 import oss2
 import requests
 import sys
-import tempfile
-import warnings
 
 
 __all__ = ['OAuth2', 'API', 'endpoints']
@@ -302,7 +299,7 @@ class API(object):
         params.update(kwargs)
         page = 1
         if next_page is not None:
-            page -= 1
+            page = next_page
         params.update({
             'biosample_ids': biosample_ids,
             'biosample_sites': biosample_sites,
@@ -424,7 +421,7 @@ class API(object):
         })
         page = 1
         if next_page is not None:
-            page -= 1
+            page = next_page
         params['page'] = page
         timeout = self.timeout
         verbose = self.verbose
@@ -536,7 +533,7 @@ class API(object):
         """上传文件
 
         Args:
-            filename (str): 生物样品编号；
+            filename (str): 要上传到服务器的文件名；
             file_or_string (file-like-object or str): 文件内容或类文件对象；
 
         Returns:
@@ -616,7 +613,8 @@ class API(object):
         prog_size = 61  # 单行输出的进度条固定为 80 个字符长度
         url = inst.url
         chunk_size = int(chunk_size)
-        self.logger.debug('\n\tStart downloading: %s' % object_name)
+        sys.stdout.write('\nStart downloading: %s' % object_name)
+        sys.stdout.write('\n\n')
         timeout = self.timeout
         try:
             with requests.get(url, stream=True, timeout=timeout) as r:
@@ -628,8 +626,9 @@ class API(object):
                     blank_s = ' ' * (prog_size - eq_size)
                     progress = '>'.join((equal_s, blank_s))
                     percent = '%.2f%%' % float(size / total * 100)
-                    self.logger.debug(
-                        '\n\t%s [%s]' % (percent.rjust(7), progress))
+                    sys.stdout.write(
+                        '\r\t%s [%s]' % (percent.rjust(7), progress)
+                    )
                     fp.write(chunk)
                 flush_func = getattr(fp, 'flush', None)
                 if flush_func:
@@ -638,6 +637,45 @@ class API(object):
             raise BGEError('download request error')
         except Exception as e:
             raise BGEError(e)
+
+    def aggregate_omics_data(self, data_element_id, time_dimension, start_time,
+                             end_time=None, biosample_id=None,
+                             interval=1, periods=100, **kwargs):
+        """聚合组学数据（目前仅支持聚合数据流中符合平台设定 JSONPath 规则的数值型数据）
+
+        Args:
+            data_element_id (str, 必填): 数据元编号；
+            time_dimension (str, 必填): 子聚合的时间维度，可选值：year, quarter,
+                                        month, week, day, minute, second
+            start_time (str, 必填): 数据流生成时间的起始时间；
+            end_time (str, 非必填): 数据流生成时间的结束时间，为空时默认取当前时间；
+            biosample_id (str, 非必填): 生物样品编号，客户端模式下为必填；
+            interval (int, 非必填): 聚合时间维度间隔，默认:1
+            periods (int, 非必填): 聚合时间维度返回数，默认:100，最大值：100
+        
+        Returns:
+            Model: 返回的聚合数据
+        """
+        params = {}
+        params.update(kwargs)
+        params.update({
+            'biosample_id': biosample_id,
+            'data_element_id': data_element_id,
+            'time_dimension': time_dimension,
+            'start_time': start_time,
+            'end_time': end_time,
+            'interval': interval,
+            'periods': periods
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.get(
+            '/omics_data/aggregate', params=params, timeout=timeout)
+        return models.Model(result)
 
     def get_range_stream(self, data_element_id, biosample_id=None,
                          start_time=None, end_time=None,
@@ -930,4 +968,30 @@ class API(object):
         request.set_authorization(self.token_type, self.access_token)
         model_url = '/task/{}'.format(task_id)
         result = request.get(model_url, timeout=timeout)
+        return models.Model(result)
+
+    def upload_model_doc(self, doc_tab, model_id, doc_content):
+        """上传模型文档
+        
+        Args:
+            doc_tab (str): 文档所在的 tab。
+            model_id (str): 模型编号。
+            doc_content (list): 文档内容
+        Returns:
+            Model_id: 模型编号；
+            version: 文档版本号。
+        """
+        data = {}
+        data['doc_tab'] = doc_tab
+        data['model_id'] = model_id
+        data['doc_content'] = doc_content
+        doc = json.dumps(data)
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.post(
+            '/model/doc_upload', data=doc, timeout=timeout)
         return models.Model(result)

@@ -1,7 +1,5 @@
 #-*- coding: utf-8 -*-
 
-import json
-import logging
 import os
 import pkgutil
 import six
@@ -68,7 +66,7 @@ def find_commands(commands_dir):
     """查找子命令列表"""
     return [
         name for _, name, is_pkg in pkgutil.iter_modules(
-            [commands_dir]) if not is_pkg
+            [commands_dir])
     ]
 
 
