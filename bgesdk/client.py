@@ -24,17 +24,13 @@ from .utils import new_logger, human_byte
 
 from posixpath import split
 from requests_toolbelt.multipart import encoder
-from shutil import copyfile
 from six import text_type
 from six.moves.urllib.parse import urljoin, urlencode
-from weakref import proxy
 
 import json
 import oss2
 import requests
 import sys
-import tempfile
-import warnings
 
 
 __all__ = ['OAuth2', 'API', 'endpoints']

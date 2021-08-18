@@ -24,7 +24,8 @@ COMMAND_NAME = 'api'
 
 class Command(BaseCommand):
 
-    help='BGE 开放平台接口测试工具，可命名行调用部分常用接口。'
+    order = 5
+    help='BGE 开放平台接口测试工具，可调用部分平台接口。'
 
     def add_arguments(self, parser):
         api_subparsers = parser.add_subparsers(

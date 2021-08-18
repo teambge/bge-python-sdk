@@ -1,7 +1,5 @@
 #-*- coding: utf-8 -*-
 
-import json
-import logging
 import os
 import pkgutil
 import six

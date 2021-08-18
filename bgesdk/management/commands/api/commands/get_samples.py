@@ -1,5 +1,3 @@
-import argparse
-from bgesdk.models import ModelEncoder
 import json
 import sys
 
@@ -7,9 +5,7 @@ from bgesdk.client import API
 from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
-from bgesdk.management.utils import (
-    get_active_project, config_get, get_home, read_config
-)
+from bgesdk.management.utils import get_active_project, config_get, read_config
 from bgesdk.models import ModelEncoder
 from bgesdk.version import __version__
 
@@ -18,13 +14,13 @@ DEFAULT_OAUTH2_SECTION = constants.DEFAULT_OAUTH2_SECTION
 DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 NOT_PARAM_FIELDS = (
-    'command', 'parser', 'method', 'print_pretty', 'access_token', 'subcommand'
+    'command', 'parser', 'method', 'pretty', 'access_token', 'subcommand'
 )
 
 
 class Command(BaseCommand):
 
-    order = 1
+    order = 2
     help='获取样品信息。'
 
     def add_arguments(self, parser):
@@ -80,7 +76,7 @@ class Command(BaseCommand):
             help='每页返回数量，默认值为 50。'
         )
         parser.add_argument(
-            '--print_pretty',
+            '--pretty',
             default=False,
             action='store_true',
             help='打印可读性高的 JSON 字符串。'
@@ -93,7 +89,7 @@ class Command(BaseCommand):
         )
 
     def handler(self, args):
-        print_pretty = args.print_pretty
+        pretty = args.pretty
         access_token = args.access_token
         params = vars(args)
         for field in NOT_PARAM_FIELDS:
@@ -111,7 +107,7 @@ class Command(BaseCommand):
         except APIError as e:
             print('请求失败：{}'.format(e))
             sys.exit(1)
-        if print_pretty:
+        if pretty:
             result = json.dumps(
                 result, ensure_ascii=False, indent=4, cls=ModelEncoder
             )

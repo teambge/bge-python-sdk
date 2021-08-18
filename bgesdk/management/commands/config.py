@@ -1,15 +1,15 @@
 import argparse
 import os
-import six
 import sys
 
-from posixpath import join, exists
+from posixpath import exists
 from six.moves import input
 
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_config_parser, config_get, secure_str, get_config_path, confirm, get_active_project
+    get_config_parser, config_get, secure_str, get_config_path, confirm,
+    get_active_project
 )
 
 

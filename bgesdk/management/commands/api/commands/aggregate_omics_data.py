@@ -1,4 +1,3 @@
-import argparse
 import json
 import sys
 
@@ -6,9 +5,7 @@ from bgesdk.client import API
 from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
-from bgesdk.management.utils import (
-    get_active_project, config_get, get_home, read_config
-)
+from bgesdk.management.utils import get_active_project, config_get, read_config
 from bgesdk.models import ModelEncoder
 from bgesdk.version import __version__
 
@@ -19,7 +16,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 8
+    order = 9
     help='聚合组学数据（目前仅支持聚合数据流中符合平台设定 JSONPath 规则的数值型数据）。'
 
     def add_arguments(self, parser):
@@ -68,7 +65,7 @@ class Command(BaseCommand):
             help='聚合时间维度返回数。'
         )
         parser.add_argument(
-            '--print_pretty',
+            '--pretty',
             default=False,
             action='store_true',
             help='打印可读性高的 JSON 字符串。'
@@ -81,7 +78,7 @@ class Command(BaseCommand):
         )
 
     def handler(self, args):
-        print_pretty = args.print_pretty
+        pretty = args.pretty
         access_token = args.access_token
         project = get_active_project()
         oauth2_section = DEFAULT_OAUTH2_SECTION
@@ -104,7 +101,7 @@ class Command(BaseCommand):
         except APIError as e:
             print('请求失败：{}'.format(e))
             sys.exit(1)
-        if print_pretty:
+        if pretty:
             result = json.dumps(
                 result, ensure_ascii=False, indent=4, cls=ModelEncoder
             )

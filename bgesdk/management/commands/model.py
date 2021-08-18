@@ -100,7 +100,7 @@ TOTAL_PROGRESS = {
 
 class Command(BaseCommand):
 
-    order = 4
+    order = 5
     help='模型初始化脚手架、配置、部署等相关命令。'
 
     def add_arguments(self, parser):

@@ -20,7 +20,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 9
+    order = 10
     help='上传文件。'
 
     def add_arguments(self, parser):
