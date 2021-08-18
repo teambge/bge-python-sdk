@@ -1,26 +1,19 @@
-import argparse
-import json
 import posixpath
 import sys
 
 from importlib import import_module
 
-from bgesdk.client import API
-from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
-from bgesdk.management.utils import (
-    get_active_project, config_get, get_home, read_config, find_commands
-)
-from bgesdk.models import ModelEncoder
+from bgesdk.management.utils import find_commands
 from bgesdk.version import __version__
 
 
 DEFAULT_OAUTH2_SECTION = constants.DEFAULT_OAUTH2_SECTION
 DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
-# 用户信息
 COMMAND_NAME = 'api'
+
 
 class Command(BaseCommand):
 

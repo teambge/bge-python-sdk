@@ -1,5 +1,3 @@
-import argparse
-import json
 import posixpath
 import sys
 
@@ -7,10 +5,7 @@ from bgesdk.client import API
 from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
-from bgesdk.management.utils import (
-    get_active_project, config_get, get_home, read_config
-)
-from bgesdk.models import ModelEncoder
+from bgesdk.management.utils import get_active_project, config_get, read_config
 from bgesdk.version import __version__
 
 
