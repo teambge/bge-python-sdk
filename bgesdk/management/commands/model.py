@@ -448,10 +448,12 @@ class Command(BaseCommand):
         image_name = RUNTIMES[runtime]
         container_name = generate_container_name(model_id)
         deps = []
-        docker_path = os.popen('which docker')
-        if not docker_path:
-            print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
-            sys.exit(1)
+        with os.popen('which docker') as f:
+            docker_path = f.read()
+            if not docker_path:
+                print(
+                    '请先安装 docker，参考 https://docs.docker.com/engine/install/')
+                sys.exit(1)
         try:
             client = docker.from_env()
         except docker.errors.DockerException:
@@ -855,10 +857,12 @@ class Command(BaseCommand):
             deps.append(pkgs)
         if requirements:
             deps.append('-r {}'.format(requirements))
-        docker_path = os.popen('which docker')
-        if not docker_path:
-            print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
-            sys.exit(1)
+        with os.popen('which docker') as f:
+            docker_path = f.read()
+            if not docker_path:
+                print(
+                    '请先安装 docker，参考 https://docs.docker.com/engine/install/')
+                sys.exit(1)
         try:
             client = docker.from_env()
         except docker.errors.DockerException:
@@ -927,10 +931,12 @@ class Command(BaseCommand):
         runtime = config_get(config.get, section_name, 'runtime')
         image_name = RUNTIMES[runtime]
         container_name = generate_container_name(model_id)
-        docker_path = os.popen('which docker')
-        if not docker_path:
-            print('请先安装 docker，参考 https://docs.docker.com/engine/install/')
-            sys.exit(1)
+        with os.popen('which docker') as f:
+            docker_path = f.read()
+            if not docker_path:
+                print(
+                    '请先安装 docker，参考 https://docs.docker.com/engine/install/')
+                sys.exit(1)
         try:
             client = docker.from_env()
         except docker.errors.DockerException:
