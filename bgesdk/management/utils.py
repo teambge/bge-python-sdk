@@ -124,3 +124,14 @@ def get_config_parser(path):
     config_parser = ConfigParser()
     config_parser.read(path)
     return config_parser
+
+
+def get_docs_dir():
+    bge_home = get_config_dir()
+    docs_dir = join(bge_home, 'docs')
+    if not exists(docs_dir):
+        with os.popen('docsify init {}'.format(docs_dir)) as f:
+            content = f.read()
+            if content:
+                return docs_dir
+    return docs_dir

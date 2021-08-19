@@ -23,8 +23,34 @@ CLIENT_CREDENTIALS_CONFIGS = [
         'secure': True
     }),
     ('endpoint', {
-        'default': 'https://api.bge.genomics.cn',
+        # 'default': 'https://api.bge.genomics.cn',
+        'default': 'http://127.0.0.1:8080',
         'type': 'str',
         'description': '访问域名'
     })
 ]
+
+TAB_CHOICES = [
+        ('genetic_diseases', '遗传疾病'),
+        ('health_risks', '健康风险'),
+        ('physiological_index', '生理指标'),
+        ('comprehensive', '综合'),
+        ('tools', '工具')
+    ]
+LANGUAGE_CHOICES = [('zh', '中文版'), ('en', 'English')]
+
+TITLE_NAME = {
+    'brief_intro': '简介',
+    'method': '方法',
+    'model_evaluation': '模型评价',
+    'data_set_size': '数据规模',
+    'ethnicity': '研究族群',
+    'limitation': '局限性说明',
+}
+
+
+API_TABLE = {
+    'QueryParams': '请求参数',
+    'Success': '返回参数',
+    'State': '参数'
+}
