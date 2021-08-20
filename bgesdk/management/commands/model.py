@@ -450,10 +450,10 @@ class Command(BaseCommand):
         deps = []
         with os.popen('which docker') as f:
             docker_path = f.read()
-            if not docker_path:
-                print(
-                    '请先安装 docker，参考 https://docs.docker.com/engine/install/')
-                sys.exit(1)
+        if not docker_path:
+            print(
+                '请先安装 docker，参考 https://docs.docker.com/engine/install/')
+            sys.exit(1)
         try:
             client = docker.from_env()
         except docker.errors.DockerException:
@@ -859,10 +859,10 @@ class Command(BaseCommand):
             deps.append('-r {}'.format(requirements))
         with os.popen('which docker') as f:
             docker_path = f.read()
-            if not docker_path:
-                print(
-                    '请先安装 docker，参考 https://docs.docker.com/engine/install/')
-                sys.exit(1)
+        if not docker_path:
+            print(
+                '请先安装 docker，参考 https://docs.docker.com/engine/install/')
+            sys.exit(1)
         try:
             client = docker.from_env()
         except docker.errors.DockerException:
@@ -933,10 +933,10 @@ class Command(BaseCommand):
         container_name = generate_container_name(model_id)
         with os.popen('which docker') as f:
             docker_path = f.read()
-            if not docker_path:
-                print(
-                    '请先安装 docker，参考 https://docs.docker.com/engine/install/')
-                sys.exit(1)
+        if not docker_path:
+            print(
+                '请先安装 docker，参考 https://docs.docker.com/engine/install/')
+            sys.exit(1)
         try:
             client = docker.from_env()
         except docker.errors.DockerException:

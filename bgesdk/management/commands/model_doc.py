@@ -2,38 +2,70 @@ import argparse
 import json
 import os
 import sys
+
 from datetime import datetime
+from posixpath import join, exists
 
 from bgesdk.client import API
 from bgesdk.error import APIError
+from bgesdk.management.command import BaseCommand
 from bgesdk.management.constants import (
     TAB_CHOICES, TITLE_NAME, API_TABLE, DEFAULT_TOKEN_SECTION,
-    DEFAULT_OAUTH2_SECTION, DEFAULT_MODEL_TIMEOUT)
-from bgesdk.management.command import BaseCommand
+    DEFAULT_OAUTH2_SECTION, DEFAULT_MODEL_TIMEOUT
+)
 from bgesdk.management.utils import (
-    get_docs_dir, config_get, get_active_project, read_config)
+    config_get, get_active_project, read_config, get_home
+)
 from bgesdk.management.validate import validator_doc
 
 
 class Command(BaseCommand):
-    order = 1
+
+    order = 6
     help = '对模型文档进行预览和发布，可访问 ' \
            'https://api.bge.genomics.cn/doc/scripts/model_doc.json 下载示例文件'
 
     def add_arguments(self, parser):
+        home = get_home()
         doc_ps = parser.add_subparsers(help='对模型文档进行预览和发布')
+
+        init_p = doc_ps.add_parser(
+            'init',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+            help='初始化 docsify 项目。'
+        )
+        init_p.add_argument(
+            'name',
+            type=str,
+            default='docs',
+            help='docsify 项目名称'
+        )
+        init_p.add_argument(
+            '--home',
+            type=str,
+            default=home,
+            help='docsify 项目生成的父级目录，默认为当前目录'
+        )
+        init_p.set_defaults(method=self.init_docsify, parser=init_p)
+
         pre_p = doc_ps.add_parser(
             'preview',
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
             help='对模型文档进行预览'
         )
+
         pre_p.add_argument(
-            '-k',
-            '--kill',
-            default=False,
-            action='store_true',
-            help='结束 docsify 服务的所有进程'
+            'path',
+            type=str,
+            help='模型文档的 json 文件路径。'
         )
+        pre_p.add_argument(
+            '--home',
+            type=str,
+            default=home,
+            help='docsify 项目的根目录，默认为当前目录'
+        )
+
         pre_p.set_defaults(method=self.preview, parser=pre_p)
 
         release_p = doc_ps.add_parser(
@@ -48,58 +80,74 @@ class Command(BaseCommand):
         parser = args.parser
         parser.print_help(sys.stderr)
 
-    def preview(self, args):
-        if args.kill:
-            os.popen(
-                "kill -9 $(ps aux | grep 'docsify' | grep -v grep | "
-                "tr -s ' '| cut -d ' ' -f 2)")
-            print('docsify 服务进程已结束')
+    def init_docsify(self, args):
+        name = args.name
+        home = args.home
+        if home is None:
+            home = get_home()
+        docs_dir = join(home, name)
+        if exists(docs_dir):
+            print('错误！{} 已存在 '.format(docs_dir))
             sys.exit(1)
+        if not exists(home):
+            print('错误！无法找到 home 目录 {}。'.format(home))
+            sys.exit(1)
+        with os.popen('docsify init {}'.format(docs_dir)) as f:
+            content = f.read()
+        if content:
+            print('docsify 项目已初始化，路径为：{}'.format(docs_dir))
+            print('请跳转至项目目录下。')
+
+    def get_docs_dir(self, home=None):
+        if home is None:
+            home = get_home()
+        doc_path = join(home, 'index.html')
+        if not exists(doc_path):
+            print('请确认当前目录或者所输入的项目路径是否为 docsify 项目的根目录。')
+            sys.exit(1)
+        return home
+
+    def preview(self, args):
         with os.popen('which docsify') as f:
             content = f.read()
-            if not content:
-                print('请先安装 docsify，参考 https://docsify.js.org/#/quickstart')
-                sys.exit(1)
-        input_value = input('？请输入 json 文件路径：')
-        if input_value:
-            if not os.path.isfile(input_value):
-                print('文件路径：{} 有误，请检查。'.format(input_value))
-                sys.exit(1)
-            docs_dir = get_docs_dir()
-            doc_data = json.load(open(input_value))
-            result = validator_doc(doc_data)
-            if result['valid'] is False:
-                print('文件内容有误，错误内容：{}'.format(result['errors']))
-                sys.exit(1)
-            doc_tab = doc_data['doc_tab']
-            model_id = doc_data['model_id']
-            doc_content = doc_data['doc_content']
-            sidebar_path = os.path.join(docs_dir, '_sidebar.md')
-            file_dir = os.path.join(docs_dir, 'model_center')
-            sidebar_lines = []
-            req_path = 'model_center/{}.md'.format(model_id)
-            for content in doc_content:
-                language = content['language']
-                doc_name = content['doc_name']
-                if language == 'en':
-                    file_dir = os.path.join(
-                        docs_dir, 'en', 'model_center')
-                    req_path = 'en/model_center/{}.md'.format(model_id)
-                if not os.path.exists(file_dir):
-                    os.makedirs(file_dir)
-                file_path = os.path.join(
-                    file_dir, '{}.md'.format(model_id))
-                sidebar = '        * [{}]({})'.format(doc_name, req_path)
-                sidebar_lines.append(sidebar)
-                self._make_doc(content, file_path, model_id)
-
-            self._write_to_sidebar(doc_tab, sidebar_path, sidebar_lines)
-            self._write_index(docs_dir)
-            os.popen('docsify serve {} --port 3000'.format(docs_dir))
-            print('浏览器中输入 http://localhost:3000 进行访问')
-        else:
-            print('请输入需要预览的文档路径')
+        if not content:
+            print('请先安装 docsify，参考 https://docsify.js.org/#/quickstart')
             sys.exit(1)
+        path = args.path
+        if not exists(path):
+            print('文件路径：{} 有误，请检查。'.format(path))
+            sys.exit(1)
+        docs_dir = self.get_docs_dir(home=args.home)
+        doc_data = json.load(open(path))
+        result = validator_doc(doc_data)
+        if result['valid'] is False:
+            print('文件内容有误，错误内容：{}'.format(result['errors']))
+            sys.exit(1)
+        doc_tab = doc_data['doc_tab']
+        model_id = doc_data['model_id']
+        doc_content = doc_data['doc_content']
+        sidebar_path = join(docs_dir, '_sidebar.md')
+        file_dir = join(docs_dir, 'model_center')
+        sidebar_lines = []
+        req_path = 'model_center/{}.md'.format(model_id)
+        for content in doc_content:
+            language = content['language']
+            doc_name = content['doc_name']
+            if language == 'en':
+                file_dir = join(
+                    docs_dir, 'en', 'model_center')
+                req_path = 'en/model_center/{}.md'.format(model_id)
+            if not exists(file_dir):
+                os.makedirs(file_dir)
+            file_path = join(
+                file_dir, '{}.md'.format(model_id))
+            sidebar = '        * [{}]({})'.format(doc_name, req_path)
+            sidebar_lines.append(sidebar)
+            self._make_doc(content, file_path, model_id)
+
+        self._write_to_sidebar(doc_tab, sidebar_path, sidebar_lines)
+        self._write_index(docs_dir)
+        os.system('docsify serve {} --port 3000'.format(docs_dir))
 
     def _make_doc(self, content, file_path, model_id):
         line_feed = '\n'
@@ -235,8 +283,8 @@ class Command(BaseCommand):
                 f.write('\n')
 
     def _write_index(self, docs_dir):
-        index_path = os.path.join(docs_dir, 'index.html')
-        if os.path.isfile(index_path) is False:
+        index_path = join(docs_dir, 'index.html')
+        if exists(index_path) is False:
             print('docs 目录下无 index.html')
             sys.exit(1)
         lines = []
@@ -268,7 +316,7 @@ class Command(BaseCommand):
             access_token, endpoint=endpoint, timeout=DEFAULT_MODEL_TIMEOUT)
         input_value = input('？请输入需要发布的 json 文件路径：')
         if input_value:
-            if not os.path.isfile(input_value):
+            if not exists(input_value):
                 print('文件路径：{} 有误，请检查。'.format(input_value))
                 sys.exit(1)
             doc_data = json.load(open(input_value))
