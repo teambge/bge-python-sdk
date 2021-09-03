@@ -1,13 +1,10 @@
 import argparse
 import docker
+import fnmatch
 import json
 import os
-import pkgutil
 import pwd
 import re
-import requests
-import shutil
-import six
 import stat
 import sys
 import tempfile
@@ -15,7 +12,7 @@ import zipfile
 
 from datetime import datetime
 from pimento import menu
-from posixpath import join, exists, abspath, isdir, relpath, dirname, split
+from posixpath import join, exists, isdir, relpath
 from six.moves import input
 from time import sleep
 from uuid import uuid4
@@ -28,6 +25,7 @@ from bgesdk.management.utils import (
     get_active_project, config_get, get_home, read_config,
     generate_container_name, get_config_parser, confirm
 )
+from bgesdk.utils import human_byte
 from bgesdk.version import __version__
 
 
@@ -38,9 +36,9 @@ DEFAULT_MODEL_TIMEOUT = constants.DEFAULT_MODEL_TIMEOUT
 TEST_SERVER_ENDPOINT = constants.TEST_SERVER_ENDPOINT
 TEST_SERVER_PORT = constants.TEST_SERVER_PORT
 
-model_match = re.compile(r'^[a-zA-Z0-9]+$').match
+model_id_match = re.compile(r'^[a-zA-Z0-9]+$').match
 
-main_py = '''\
+MAIN_PY = '''\
 import json
 import bgesdk
 import logging
@@ -64,12 +62,27 @@ def handler(event, context):
     })
 '''
 
-model_config_template = '''\
+MODEL_CONFIG_TEMPLATE = '''\
 [Model]
 model_id =
 memory_size = 128
 timeout = 900
 runtime = python3
+'''
+
+BGEIGNORE_TEMPLATE = '''\
+# Unix filename patterns
+#
+#   *    matches everything
+#   ?    matches any single character
+#   seq  matches any character in seq
+#   !seq matches any character not in seq
+
+
+# Ignore folder .bge/
+
+.bge/*
+
 '''
 
 RUNTIMES = {
@@ -324,12 +337,17 @@ class Command(BaseCommand):
             else:
                 print('已存在')
         model_config_path = join(scaffold_dir, 'model.ini')
+        print('创建 {} ... '.format(model_config_path))
         if not exists(model_config_path):
-            open(model_config_path, 'w').write(model_config_template)
+            open(model_config_path, 'w').write(MODEL_CONFIG_TEMPLATE)
+        ignore_path = join(scaffold_dir, '.bgeignore')
+        print('创建 {} ... '.format(ignore_path))
+        if not exists(ignore_path):
+            open(ignore_path, 'w').write(BGEIGNORE_TEMPLATE)
         script_name = 'main.py'
         script_path = join(scaffold_dir, script_name)
         with open(script_path, 'wb') as file_out:
-            file_out.write(main_py.encode())
+            file_out.write(MAIN_PY.encode())
         st = os.stat(script_path)
         os.chmod(script_path, st.st_mode | stat.S_IEXEC)
         self._save_model_config(
@@ -365,7 +383,7 @@ class Command(BaseCommand):
         prompt = '？请输入解读模型编号 [{}]：'.format(default_model_id)
         while True:
             model_id = input(prompt)
-            if not model_match(model_id):
+            if not model_id_match(model_id):
                 print('模型编号只能包含数字、大小写字母')
                 continue
             if model_id:
@@ -461,7 +479,7 @@ class Command(BaseCommand):
             print('启动命令：/etc/init.d/docker start')
             sys.exit(1)
         command = ('pip install --no-deps bge-python-sdk pimento '
-                'requests_toolbelt -t /code/lib')
+                   'requests_toolbelt -t /code/lib')
         try:
             client.images.get(image_name)
         except docker.errors.NotFound:
@@ -585,6 +603,10 @@ class Command(BaseCommand):
             access_token, endpoint=endpoint, timeout=DEFAULT_MODEL_TIMEOUT)
         object_name = None
         if not ignore_source:
+            ignore_path = join(home, '.bgeignore')
+            if not exists(ignore_path):
+                print('未发现 .bgeignore 文件，初始化 {} ... '.format(ignore_path))
+                open(ignore_path, 'w').write(BGEIGNORE_TEMPLATE)
             print('开始打包模型源码...')
             with tempfile.NamedTemporaryFile(suffix='.zip') as tmp:
                 with zipfile.ZipFile(tmp.name, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -594,11 +616,11 @@ class Command(BaseCommand):
                 size = tmp.tell()
                 tmp.seek(0)
                 print('打包成功')
-                size_mb = '%.2f' % (size / 1024.0 / 1024.0)
+                human_size = human_byte(size)
                 if size > 100 * 1024 * 1024:
-                    print('打包后 zip 文件大小 {}，最大限制 100MB'.format(size_mb))
+                    print('打包后 zip 文件为 {}，最大限制 100MB'.format(human_size))
                     exit(1)
-                print('打包 zip 文件大小为：{}MB'.format(size_mb))
+                print('打包 zip 文件大小为：{}'.format(human_size))
                 print('开始上传模型源码...')
                 try:
                     object_name = api.upload(zip_filename, tmp)
@@ -646,16 +668,43 @@ class Command(BaseCommand):
         elif 'REVOKED' == progress:
             print('模型 {} 灰度部署任务已被撤销。'.format(model_id))
 
-    def _zip_codedir(self, path, ziph):
-        for root, dirs, files in os.walk(path):
-            # 项目目录 .bge/build 不打包入 zip 文件
-            bgedir = join(path.rstrip('/'), '.bge', 'build')
-            if root == bgedir or root.startswith(bgedir + '/'):
-                continue
+    def _zip_codedir(self, home, ziph):
+        home = home.rstrip('/')
+        total_files = {}
+        zip_relpaths = set()
+        for root, dirs, files in os.walk(home):
             for file in files:
                 filepath = join(root, file)
-                zip_relpath = relpath(filepath, path)
-                ziph.write(filepath, zip_relpath)
+                zip_relpath = relpath(filepath, home)
+                zip_relpaths.add(zip_relpath)
+                total_files[zip_relpath] = filepath
+        src_zip_relpaths = zip_relpaths.copy()
+        ignore_patterns = self.get_ignore_patterns(home)
+        for ignore_pattern in ignore_patterns:
+            if ignore_pattern.startswith('!'):
+                ignore_pattern = ignore_pattern[1:]
+                zip_relpaths.update(
+                    fnmatch.filter(src_zip_relpaths, ignore_pattern))
+            else:
+                zip_relpaths -= set(
+                    fnmatch.filter(zip_relpaths, ignore_pattern))
+        for zip_relpath in zip_relpaths:
+            filepath = total_files[zip_relpath]
+            ziph.write(filepath, zip_relpath)
+
+    def get_ignore_patterns(self, home):
+        ignore_patterns = []
+        home = home.rstrip('/')
+        ignore_path = join(home, '.bgeignore')
+        with open(ignore_path) as fp:
+            for _ in fp.readlines():
+                _ = _.strip()
+                while _.startswith('/'):
+                    _ = _[1:]
+                if _.startswith('#') or not _:
+                    continue
+                ignore_patterns.append(_)
+        return ignore_patterns
 
     def publish_model(self, args):
         """发布模型到稳定版"""
