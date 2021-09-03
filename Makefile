@@ -27,8 +27,20 @@ upload:
 	twine upload dist/*
 
 clean:
-	rm -rf build dist *.egg-info __pycache__ \
-		   bgesdk/__pycache__ bgesdk/*.pyc bgesdk/management/*.pyc \
-		   bgesdk/commands/*.pyc tests/__pycache__ tests/*.pyc
+	rm -rf build \
+		   dist \
+		   *.egg-info __pycache__/ \
+		   bgesdk/__pycache__/ \
+		   bgesdk/*.pyc \
+		   bgesdk/management/*.pyc \
+		   bgesdk/management/__pycache__/ \
+		   bgesdk/management/commands/*.pyc \
+		   bgesdk/management/commands/__pycache__/ \
+		   bgesdk/management/commands/api/*.pyc \
+		   bgesdk/management/commands/api/__pycache__/ \
+		   bgesdk/management/commands/api/commands/*.pyc \
+		   bgesdk/management/commands/api/commands/__pycache__/ \
+		   tests/*.pyc \
+		   tests/__pycache__/
 
 .PHONY: test upload upload-test build wheel install clean

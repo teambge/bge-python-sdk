@@ -13,6 +13,7 @@ CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
 REDIRECT_URL = os.environ.get('REDIRECT_URL')
 ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
 SELF_BIOSAMPLE_ID = os.environ.get('SELF_BIOSAMPLE_ID')
+SELF_META_BIOSAMPLE_ID = os.environ.get('SELF_META_BIOSAMPLE_ID')
 OTHER_BIOSAMPLE_ID = os.environ.get('OTHER_BIOSAMPLE_ID')
 
 
@@ -47,6 +48,12 @@ def api(oauth2, access_token):
 def self_biosample_id():
     """本人的样品编号"""
     return SELF_BIOSAMPLE_ID
+
+
+@pytest.fixture(scope='session')
+def self_meta_biosample_id():
+    """本人的 Meta 样品编号"""
+    return SELF_META_BIOSAMPLE_ID
 
 
 @pytest.fixture(scope='session')

@@ -122,3 +122,4 @@ def get_config_parser(path):
     config_parser = ConfigParser()
     config_parser.read(path)
     return config_parser
+
