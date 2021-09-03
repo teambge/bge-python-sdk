@@ -11,3 +11,5 @@ docs/_templates/
 .tox/
 test_env.sh
 .vscode/
+.eggs/
+.pytest_cache/
