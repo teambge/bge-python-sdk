@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Edit by yourself.
+
+export BASE_URL='https://api.bge.genomics.cn'
+export CLIENT_ID='demo'
+export CLIENT_SECRET='demo'
+export REDIRECT_URI='http://test.cn'
+export ACCESS_TOKEN='demo'
+export SELF_BIOSAMPLE_ID='E-B1234567890'
+export SELF_META_BIOSAMPLE_ID='E-F1234567890'
+export OTHER_BIOSAMPLE_ID='E-B1234567891'
+
+pytest
