@@ -23,8 +23,7 @@ CLIENT_CREDENTIALS_CONFIGS = [
         'secure': True
     }),
     ('endpoint', {
-        # 'default': 'https://api.bge.genomics.cn',
-        'default': 'http://127.0.0.1:8080',
+        'default': 'https://api.bge.genomics.cn',
         'type': 'str',
         'description': '访问域名'
     })
