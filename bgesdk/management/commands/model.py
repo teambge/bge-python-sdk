@@ -86,8 +86,8 @@ BGEIGNORE_TEMPLATE = '''\
 '''
 
 RUNTIMES = {
-    'python2.7': 'teambge/model-python2.7:{}'.format(__version__),
-    'python3': 'teambge/model-python3.6:{}'.format(__version__)
+    'python2.7': 'teambge/model-python2.7:latest',
+    'python3': 'teambge/model-python3.6:latest'
 }
 WORKDIR = '/code'
 
