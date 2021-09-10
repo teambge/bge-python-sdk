@@ -86,8 +86,8 @@ BGEIGNORE_TEMPLATE = '''\
 '''
 
 RUNTIMES = {
-    'python2.7': 'teambge/model-python2.7:{}'.format(__version__),
-    'python3': 'teambge/model-python3.6:{}'.format(__version__)
+    'python2.7': 'teambge/model-python2.7:latest',
+    'python3': 'teambge/model-python3.6:latest'
 }
 WORKDIR = '/code'
 
@@ -1001,7 +1001,7 @@ class Command(BaseCommand):
                 print('镜像拉取失败，请重试')
                 sys.exit(1)
             print('镜像拉取成功')
-        command = 'sh -c "python /server/app.py"'
+        command = 'python -u /server/app.py'
         pwd_info = pwd.getpwuid(os.getuid())
         uid = pwd_info.pw_uid
         gid = pwd_info.pw_gid
