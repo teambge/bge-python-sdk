@@ -30,6 +30,11 @@ class Command(BaseCommand):
             help='服务器存储使用的文件名，不提供时默认使用上传文件的名字。'
         )
         parser.add_argument(
+            '-i',
+            '--cmk_id',
+            help='阿里云 KMS 服务密钥 ID，提供时代表使用加密方式上传文件。'
+        )
+        parser.add_argument(
             '-t',
             '--access_token',
             type=str,
@@ -51,11 +56,12 @@ class Command(BaseCommand):
             print('只能上传文件')
             sys.exit(1)
         filename = args.filename
+        cmk_id = args.cmk_id
         if not filename:
             filename = posixpath.split(filepath)[1]
         try:
             with open(filepath, 'rb') as fp:
-                object_name = api.upload(filename, fp)
+                object_name = api.upload(filename, fp, cmk_id=cmk_id)
         except APIError as e:
             print('\n\n请求失败：{}'.format(e))
             sys.exit(1)

@@ -22,10 +22,13 @@ from .error import BGEError
 from .http import HTTPRequest
 from .utils import new_logger, human_byte
 
+from aliyunsdkcore.auth.credentials import StsTokenCredential
+from aliyunsdkcore.client import AcsClient
 from posixpath import split
 from requests_toolbelt.multipart import encoder
 from six import text_type
 from six.moves.urllib.parse import urljoin, urlencode
+
 
 import json
 import oss2
@@ -529,12 +532,13 @@ class API(object):
         result = request.post('/sts/token', data=kwargs, timeout=timeout)
         return models.Model(result)
 
-    def upload(self, filename, file_or_string):
+    def upload(self, filename, file_or_string, cmk_id=None):
         """上传文件
 
         Args:
             filename (str): 要上传到服务器的文件名；
             file_or_string (file-like-object or str): 文件内容或类文件对象；
+            cmk_id (str)： 阿里云 KMS 服务用户主密钥 ID，加密上传时提供 CMK ID 即可；
 
         Returns:
             object_name: 文件的 OSS 对象名；
@@ -557,7 +561,19 @@ class API(object):
         security_token = credentials['security_token']
         auth = oss2.StsAuth(
             access_key_id, access_key_secret, security_token)
-        bucket = oss2.Bucket(auth, endpoint, bucket_name)
+        if cmk_id is not None:
+            region_id = token.region_id
+            kms_provider = oss2.AliKMSProvider(
+                access_key_id, access_key_secret, region_id, cmk_id)
+            # NOTE 官方 oss2 处理 STS 加密上传存在 bug，等待其修复，此处做代码动态修改
+            sts_token_credential = StsTokenCredential(
+                access_key_id, access_key_secret, security_token)
+            kms_provider.kms_client = AcsClient(
+                region_id=region_id, credential=sts_token_credential)
+            bucket = oss2.CryptoBucket(
+                auth, endpoint, bucket_name, crypto_provider=kms_provider)
+        else:
+            bucket = oss2.Bucket(auth, endpoint, bucket_name)
         object_name = '%s/%s' % (destination, filename)
         bucket.put_object(
             object_name, file_or_string,
