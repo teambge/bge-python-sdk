@@ -233,6 +233,23 @@ class API(object):
         self.verbose = verbose
         self.logger = new_logger(self.__class__.__name__, verbose=verbose)
 
+    def introspect(self):
+        """验证当前使用的 access_token 有效性
+
+        Returns:
+            Model: Token 元数据；
+        """
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.get('/oauth2/introspect', params={
+            'token': self.access_token
+        }, timeout=timeout)
+        return models.Model(result)
+
     def get_user(self, **params):
         """获取用户信息
 
@@ -552,6 +569,10 @@ class API(object):
             ))
             sys.stdout.flush()
         token = self.get_upload_token()
+        token_meta = self.introspect()
+        if token_meta['active'] == False:
+            raise BGEError('access_token has expired')
+        client_id = token_meta['client_id']
         credentials = token.credentials
         destination = token.destination
         bucket_name = token.bucket
@@ -575,8 +596,12 @@ class API(object):
         else:
             bucket = oss2.Bucket(auth, endpoint, bucket_name)
         object_name = '%s/%s' % (destination, filename)
+        bge_open_client_id_header = 'x-oss-meta-bge-open-client-id'
+        custom_headers = { bge_open_client_id_header: client_id }
         bucket.put_object(
-            object_name, file_or_string,
+            object_name,
+            file_or_string,
+            headers=custom_headers,
             progress_callback=progress_callback)
         sys.stdout.write('')
         return object_name
