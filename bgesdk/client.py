@@ -19,18 +19,19 @@ BGE 开放平台 SDK 客户端模块。
 from . import constants
 from . import models
 from .error import BGEError
+from .fs import FileItem
 from .http import HTTPRequest
 from .utils import new_logger, human_byte
 
 from aliyunsdkcore.auth.credentials import StsTokenCredential
 from aliyunsdkcore.client import AcsClient
-from posixpath import split
+from posixpath import split, join, isdir
 from requests_toolbelt.multipart import encoder
 from six import text_type
 from six.moves.urllib.parse import urljoin, urlencode
 
-
 import json
+import os
 import oss2
 import requests
 import sys
@@ -39,6 +40,16 @@ import sys
 __all__ = ['OAuth2', 'API', 'endpoints']
 
 endpoints = [v['endpoint'] for v in constants.ENDPOINTS]
+
+
+def progress_callback(bytes_consumed, total_bytes):
+    sys.stdout.write(
+        '\r文件大小：{}, 上传进度: {}%，已上传 {}'.format(
+            human_byte(total_bytes, 2),
+            '%.2f' % ((bytes_consumed / total_bytes) * 100),
+            human_byte(bytes_consumed, 2)
+    ))
+    sys.stdout.flush()
 
 
 def alive(self):
@@ -53,7 +64,7 @@ def alive(self):
     request = HTTPRequest(
         self.endpoint, max_retries=max_retries, verbose=verbose)
     try:
-        result = request.get('/ping', timeout=timeout)
+        request.get('/ping', timeout=timeout)
     except Exception as e:
         return False
     return True
@@ -560,15 +571,62 @@ class API(object):
         Returns:
             object_name: 文件的 OSS 对象名；
         """
-        def progress_callback(bytes_consumed, total_bytes):
-            sys.stdout.write(
-                '\r文件大小：{}, 上传进度: {}%，已上传 {}'.format(
-                    human_byte(total_bytes, 2),
-                    '%.2f' % ((bytes_consumed / total_bytes) * 100),
-                    human_byte(bytes_consumed, 2)
-            ))
-            sys.stdout.flush()
         token = self.get_upload_token()
+        return self._upload_file(token, filename, file_or_string, cmk_id=cmk_id)
+
+    def batch_upload(self, *files, cmk_id=None):
+        """批量上传文件
+
+        Args:
+            files (FileItem object list): 要上传到服务器的文件列表；
+            cmk_id (str)： 阿里云 KMS 服务用户主密钥 ID，加密上传时提供 CMK ID 即可；
+
+        Returns:
+            object_name: 文件的 OSS 对象名；
+        """
+        token = self.get_upload_token()
+        object_names = []
+        for file_obj in files:
+            if not isinstance(file_obj, FileItem):
+                continue
+            filename = file_obj.filename
+            file_or_string = file_obj.file_or_string
+            sys.stdout.write('开始上传：{}\n'.format(filename))
+            object_name = self._upload_file(
+                token, filename, file_or_string, cmk_id=cmk_id)
+            sys.stdout.write('\n\n')
+            sys.stdout.flush()
+            object_names.append(object_name)
+        return object_names
+
+    def upload_dir(self, dirpath, cmk_id=None):
+        """上传目录下的文件(不递归上传子文件夹中文件)
+
+        仅上传目录中的文件，软链接、符号链接、文件夹均不会上传至平台。
+
+        Args:
+            dirpath (str): 要上传到服务器的文件夹；
+            cmk_id (str)： 阿里云 KMS 服务用户主密钥 ID，加密上传时提供 CMK ID 即可；
+
+        Returns:
+            object_names: 上传的文件 OSS 对象名列表；
+        """
+        token = self.get_upload_token()
+        object_names = []
+        for filename in os.listdir(dirpath):
+            filepath = join(dirpath, filename)
+            if isdir(filepath):
+                continue
+            sys.stdout.write('开始上传：{}\n'.format(filepath))
+            with open(filepath, 'rb') as fp:
+                object_name = self._upload_file(
+                    token, filename, fp, cmk_id=cmk_id)
+            sys.stdout.write('\n\n')
+            sys.stdout.flush()
+            object_names.append(object_name)
+        return object_names
+
+    def _upload_file(self, token, filename, file_or_string, cmk_id=None):
         token_meta = self.introspect()
         if token_meta['active'] == False:
             raise BGEError('access_token has expired')
