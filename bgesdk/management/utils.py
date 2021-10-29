@@ -2,6 +2,7 @@
 
 import os
 import pkgutil
+import platform
 import six
 import sys
 
@@ -19,6 +20,8 @@ else:
 NoSectionError = configparser.NoSectionError
 NoOptionError = configparser.NoOptionError
 HTTPConnection = http_client.HTTPConnection
+
+SYS_STR = platform.system().lower()
 
 
 def get_home():
@@ -123,3 +126,20 @@ def get_config_parser(path):
     config_parser.read(path)
     return config_parser
 
+
+def output(*args, sep=' ', end='\n'):
+    args = map(lambda x: str(x), args)
+    content = '{}'.format(sep).join(args)
+    return sys.stdout.write("{}{}".format(content, end))
+
+
+def get_sys_user():
+    if SYS_STR == 'windows':
+        user = '1000:1000'
+    else:
+        import pwd
+        pwd_info = pwd.getpwuid(os.getuid())
+        uid = pwd_info.pw_uid
+        gid = pwd_info.pw_gid
+        user = '{}:{}'.format(uid, gid)
+    return user

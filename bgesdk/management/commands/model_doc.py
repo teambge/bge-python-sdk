@@ -14,7 +14,8 @@ from bgesdk.management.constants import (
     DEFAULT_OAUTH2_SECTION, DEFAULT_MODEL_TIMEOUT
 )
 from bgesdk.management.utils import (
-    config_get, get_active_project, read_config, get_home
+    config_get, get_active_project, read_config, get_home,
+    output, SYS_STR
 )
 from bgesdk.management.validate import validator_doc
 
@@ -87,41 +88,42 @@ class Command(BaseCommand):
             home = get_home()
         docs_dir = join(home, name)
         if exists(docs_dir):
-            print('错误！{} 已存在 '.format(docs_dir))
+            output('错误！{} 已存在 '.format(docs_dir))
             sys.exit(1)
         if not exists(home):
-            print('错误！无法找到 home 目录 {}。'.format(home))
+            output('错误！无法找到 home 目录 {}。'.format(home))
             sys.exit(1)
         with os.popen('docsify init {}'.format(docs_dir)) as f:
             content = f.read()
         if content:
-            print('docsify 项目已初始化，路径为：{}'.format(docs_dir))
-            print('请跳转至项目目录下。')
+            output('docsify 项目已初始化，路径为：{}'.format(docs_dir))
+            output('请跳转至项目目录下。')
 
     def get_docs_dir(self, home=None):
         if home is None:
             home = get_home()
         doc_path = join(home, 'index.html')
         if not exists(doc_path):
-            print('请确认当前目录或者所输入的项目路径是否为 docsify 项目的根目录。')
+            output('请确认当前目录或者所输入的项目路径是否为 docsify 项目的根目录。')
             sys.exit(1)
         return home
 
     def preview(self, args):
-        with os.popen('which docsify') as f:
+        command = 'whereis docsify' if SYS_STR == 'windows' else 'which docsify'
+        with os.popen(command) as f:
             content = f.read()
         if not content:
-            print('请先安装 docsify，参考 https://docsify.js.org/#/quickstart')
+            output('请先安装 docsify，参考 https://docsify.js.org/#/quickstart')
             sys.exit(1)
         path = args.path
         if not exists(path):
-            print('文件路径：{} 有误，请检查。'.format(path))
+            output('文件路径：{} 有误，请检查。'.format(path))
             sys.exit(1)
         docs_dir = self.get_docs_dir(home=args.home)
         doc_data = json.load(open(path))
         result = validator_doc(doc_data)
         if result['valid'] is False:
-            print('文件内容有误，错误内容：{}'.format(result['errors']))
+            output('文件内容有误，错误内容：{}'.format(result['errors']))
             sys.exit(1)
         doc_tab = doc_data['doc_tab']
         model_id = doc_data['model_id']
@@ -244,7 +246,7 @@ class Command(BaseCommand):
                         try:
                             data = params[index]
                         except:
-                            print(
+                            output(
                                 'arguments中的关键词数组应大于'
                                 '等于templates中的关键词数组')
                             sys.exit(1)
@@ -285,7 +287,7 @@ class Command(BaseCommand):
     def _write_index(self, docs_dir):
         index_path = join(docs_dir, 'index.html')
         if exists(index_path) is False:
-            print('docs 目录下无 index.html')
+            output('docs 目录下无 index.html')
             sys.exit(1)
         lines = []
         with open(index_path, 'r') as f:
@@ -317,7 +319,7 @@ class Command(BaseCommand):
         input_value = input('？请输入需要发布的 json 文件路径：')
         if input_value:
             if not exists(input_value):
-                print('文件路径：{} 有误，请检查。'.format(input_value))
+                output('文件路径：{} 有误，请检查。'.format(input_value))
                 sys.exit(1)
             doc_data = json.load(open(input_value))
             doc_tab = doc_data['doc_tab']
@@ -326,12 +328,12 @@ class Command(BaseCommand):
             try:
                 result = api.upload_model_doc(doc_tab, model_id, doc_content)
             except APIError as e:
-                print('模型文档上传失败：{}'.format(e))
+                output('模型文档上传失败：{}'.format(e))
                 sys.exit(1)
-            print('模型文档上传结果：')
-            print(json.dumps(result.json(), indent=4, ensure_ascii=False))
+            output('模型文档上传结果：')
+            output(json.dumps(result.json(), indent=4, ensure_ascii=False))
 
         else:
-            print('请输入需要预览的文档路径')
+            output('请输入需要预览的文档路径')
             sys.exit(1)
 
