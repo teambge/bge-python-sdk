@@ -8,7 +8,9 @@ from bgesdk.client import API
 from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
-from bgesdk.management.utils import get_active_project, config_get, read_config
+from bgesdk.management.utils import (
+    get_active_project, config_get, read_config, output
+)
 from bgesdk.version import __version__
 
 
@@ -58,13 +60,13 @@ class Command(BaseCommand):
                 files.append(filepath)
                 continue
         if not files:
-            print('文件夹中没有可上传的文件')
+            output('文件夹中没有可上传的文件')
             sys.exit(1)
         try:
             object_names = api.upload_dir(dirpath, cmk_id=cmk_id)
         except APIError as e:
-            print('\n\n请求失败：{}'.format(e))
+            output('\n\n请求失败：{}'.format(e))
             sys.exit(1)
-        print('\n文件上传成功：')
+        output('\n文件上传成功：')
         for i, object_name in enumerate(object_names, 1):
-            print('{}. {}'.format(i, object_name))
+            output('{}. {}'.format(i, object_name))

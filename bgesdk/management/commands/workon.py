@@ -4,7 +4,8 @@ from posixpath import splitext
 
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_config_dir, get_config_path, get_active_path, get_active_project
+    get_config_dir, get_config_path, get_active_path, get_active_project,
+    output
 )
 
 
@@ -31,11 +32,11 @@ class Command(BaseCommand):
 
     def workon_project(self, project):
         config_path = get_config_path(project)
-        print('配置文件位置：{}'.format(config_path))
+        output('配置文件位置：{}'.format(config_path))
         active_path = get_active_path()
         with open(active_path, 'w') as fp:
             fp.write(project)
-        print('已激活 {} 的项目配置'.format(project))
+        output('已激活 {} 的项目配置'.format(project))
 
     def list_projects(self):
         active_project = get_active_project()
@@ -46,11 +47,11 @@ class Command(BaseCommand):
             if ext != '.ini':
                 continue
             projects.append(name)
-        print('通过 bge workon <NAME> 切换生效配置：\n')
+        output('通过 bge workon <NAME> 切换生效配置：\n')
         projects.sort()
         if active_project in projects:
-            print(active_project, '- 已生效')
+            output(active_project, '- 已生效')
         for project in projects:
             if project == active_project:
                 continue
-            print(project)
+            output(project)

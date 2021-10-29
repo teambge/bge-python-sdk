@@ -5,7 +5,9 @@ from bgesdk.client import API
 from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
-from bgesdk.management.utils import get_active_project, config_get, read_config
+from bgesdk.management.utils import (
+    get_active_project, config_get, read_config, output
+)
 from bgesdk.version import __version__
 
 
@@ -74,7 +76,7 @@ class Command(BaseCommand):
         api = API(access_token, endpoint=endpoint, timeout=18.)
         filename = posixpath.split(object_name)[1]
         if filename == '':
-            print('下载失败，object_name 不是文件：{}'.format(repr(object_name)))
+            output('下载失败，object_name 不是文件：{}'.format(repr(object_name)))
             sys.exit(1)
         if posixpath.exists(filename):
             basename, suffix = posixpath.splitext(filename)
@@ -95,6 +97,6 @@ class Command(BaseCommand):
                     chunk_size=args.chunk_size
                 )
         except APIError as e:
-            print('\n\n请求失败：{}'.format(e))
+            output('\n\n请求失败：{}'.format(e))
             sys.exit(1)
-        print('\n\n文件下载成功：{}'.format(filename))
+        output('\n\n文件下载成功：{}'.format(filename))
