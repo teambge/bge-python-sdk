@@ -5,7 +5,9 @@ from bgesdk.client import API
 from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
-from bgesdk.management.utils import get_active_project, config_get, read_config
+from bgesdk.management.utils import (
+    get_active_project, config_get, read_config, output
+)
 from bgesdk.models import ModelEncoder
 from bgesdk.version import __version__
 
@@ -105,7 +107,7 @@ class Command(BaseCommand):
         try:
             result = api.get_samples(**params)
         except APIError as e:
-            print('请求失败：{}'.format(e))
+            output('请求失败：{}'.format(e))
             sys.exit(1)
         if pretty:
             result = json.dumps(
@@ -113,5 +115,5 @@ class Command(BaseCommand):
             )
         else:
             result = json.dumps(result, ensure_ascii=False, cls=ModelEncoder)
-        print('请求成功，返回值：')
-        print(result)
+        output('请求成功，返回值：')
+        output(result)

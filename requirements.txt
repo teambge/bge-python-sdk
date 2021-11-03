@@ -1,3 +1,4 @@
+aliyun-python-sdk-core
 six
 certifi
 chardet
@@ -7,6 +8,6 @@ urllib3
 oss2
 docker
 pimento
-requests
+qprompt
 requests_toolbelt
 validator.py

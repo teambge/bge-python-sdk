@@ -5,7 +5,9 @@ from bgesdk.client import API
 from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
-from bgesdk.management.utils import get_active_project, config_get, read_config
+from bgesdk.management.utils import (
+    get_active_project, config_get, read_config, output
+)
 from bgesdk.models import ModelEncoder
 from bgesdk.version import __version__
 
@@ -16,7 +18,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 12
+    order = 13
     help='获取 BGE 私有平台任务结果。'
 
     def add_arguments(self, parser):
@@ -51,11 +53,11 @@ class Command(BaseCommand):
         try:
             result = api.task(args.task_id)
         except APIError as e:
-            print('请求失败：{}'.format(e))
+            output('请求失败：{}'.format(e))
             sys.exit(1)
         if not result:
-            print('请求成功，返回值：')
-            print(result)
+            output('请求成功，返回值：')
+            output(result)
             sys.exit(1)
         if pretty:
             result = json.dumps(
@@ -63,5 +65,5 @@ class Command(BaseCommand):
             )
         else:
             result = json.dumps(result, ensure_ascii=False, cls=ModelEncoder)
-        print('请求成功，返回值：')
-        print(result)
+        output('请求成功，返回值：')
+        output(result)

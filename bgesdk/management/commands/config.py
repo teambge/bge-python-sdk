@@ -9,7 +9,7 @@ from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
     get_config_parser, config_get, secure_str, get_config_path, confirm,
-    get_active_project
+    get_active_project, output
 )
 
 
@@ -54,7 +54,7 @@ class Command(BaseCommand):
 
     def handler(self, args):
         project = get_active_project()
-        print('当前正在配置 {}：\n'.format(project))
+        output('当前正在配置 {}：\n'.format(project))
         config_path = get_config_path(project, check_exists=False)
         config_parser = get_config_parser(config_path)
         oauth2_section = constants.DEFAULT_OAUTH2_SECTION
@@ -89,15 +89,15 @@ class Command(BaseCommand):
                     config_parser.set(oauth2_section, key, '')
         with open(config_path, 'w') as config_file:
             config_parser.write(config_file)
-        print('')
-        print('配置已保存至：{}'.format(config_path))
+        output('')
+        output('配置已保存至：{}'.format(config_path))
 
     def add_project(self, args):
         project = args.project.lower()
-        print('正在添加配置 {}：\n'.format(project))
+        output('正在添加配置 {}：\n'.format(project))
         config_path = get_config_path(project, check_exists=False)
         if exists(config_path):
-            print('配置 {} 已存在'.format(project))
+            output('配置 {} 已存在'.format(project))
             sys.exit(1)
         config_parser = get_config_parser(config_path)
         oauth2_section = constants.DEFAULT_OAUTH2_SECTION
@@ -132,24 +132,24 @@ class Command(BaseCommand):
                     config_parser.set(oauth2_section, key, '')
         with open(config_path, 'w') as config_file:
             config_parser.write(config_file)
-        print('')
-        print('配置已保存至：{}'.format(config_path))
+        output('')
+        output('配置已保存至：{}'.format(config_path))
 
     def remove_project(self, args):
         project = args.project.lower()
         activate_project = get_active_project()
         if activate_project == project:
-            print('无法删除正在使用的配置，删除前请先使用 bge workon project 切换')
+            output('无法删除正在使用的配置，删除前请先使用 bge workon project 切换')
             sys.exit(1)
         config_path = get_config_path(project)
         if not confirm(prompt='确认删除配置项目 {}？'.format(project)):
-            print('已取消删除')
+            output('已取消删除')
             sys.exit(0)
         try:
             os.unlink(config_path)
         except (IOError, OSError):
             pass
-        print('成功删除配置项目 {}'.format(project))
+        output('成功删除配置项目 {}'.format(project))
 
     def show_project(self, args):
         project = args.project
@@ -157,8 +157,8 @@ class Command(BaseCommand):
             project = get_active_project()
         project = project.lower()
         config_path = get_config_path(project)
-        print('配置文件：{}'.format(config_path))
-        print('配置详情：')
-        print('')
+        output('配置文件：{}'.format(config_path))
+        output('配置详情：')
+        output('')
         with open(config_path, 'r') as config_file:
-            print(config_file.read())
+            output(config_file.read())
