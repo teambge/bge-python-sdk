@@ -28,7 +28,10 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         home = get_home()
-        doc_ps = parser.add_subparsers(help='对模型文档进行预览和发布')
+        doc_ps = parser.add_subparsers(
+            help='对模型文档进行预览和发布',
+            required=False
+        )
 
         init_p = doc_ps.add_parser(
             'init',
