@@ -19,7 +19,10 @@ class Command(BaseCommand):
     help = '配置、新增、显示、删除 BGE 开放平台的 OAuth2 配置，仅支持客户端模式。'
 
     def add_arguments(self, parser):
-        sub_ps = parser.add_subparsers(help='新增、删除、显示 OAuth2 配置')
+        sub_ps = parser.add_subparsers(
+            help='新增、删除、显示 OAuth2 配置',
+            required=False
+        )
         add_p = sub_ps.add_parser(
             'add',
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
