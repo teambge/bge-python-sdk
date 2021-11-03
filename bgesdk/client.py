@@ -574,7 +574,7 @@ class API(object):
         token = self.get_upload_token()
         return self._upload_file(token, filename, file_or_string, cmk_id=cmk_id)
 
-    def batch_upload(self, *files, cmk_id=None):
+    def batch_upload(self, files, cmk_id=None):
         """批量上传文件
 
         Args:
@@ -584,8 +584,12 @@ class API(object):
         Returns:
             object_name: 文件的 OSS 对象名；
         """
-        token = self.get_upload_token()
+        if not files:
+            raise BGEError('files is required')
         object_names = []
+        if isinstance(files, (list, tuple)):
+            files = [files]
+        token = self.get_upload_token()
         for file_obj in files:
             if not isinstance(file_obj, FileItem):
                 continue
