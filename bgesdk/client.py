@@ -289,7 +289,7 @@ class API(object):
         """
         params.update({
             'rsids': rsids,
-            'biosample_id': biosample_id
+            'biosample_id': biosample_id.upper()
         })
         timeout = self.timeout
         verbose = self.verbose
@@ -332,7 +332,7 @@ class API(object):
         if next_page is not None:
             page = next_page
         params.update({
-            'biosample_ids': biosample_ids,
+            'biosample_ids': biosample_ids.upper(),
             'biosample_sites': biosample_sites,
             'omics': omics,
             'project_ids': project_ids,
@@ -368,7 +368,7 @@ class API(object):
         Returns:
             Model: 样品数据；
         """
-        url = '/samples/{}'.format(biosample_id)
+        url = '/samples/{}'.format(biosample_id.upper())
         timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
@@ -422,7 +422,7 @@ class API(object):
             return
         data = {}
         data.update(kwargs)
-        data['biosample_id'] = biosample_id
+        data['biosample_id'] = biosample_id.upper()
         timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
@@ -446,7 +446,7 @@ class API(object):
             Model: 类群丰度数据详情；
         """
         params.update({
-            'biosample_id': biosample_id,
+            'biosample_id': biosample_id.upper(),
             'taxon_id': taxon_ids,
             'limit': limit
         })
@@ -464,7 +464,7 @@ class API(object):
             '/microbiome/taxon_abundance', params=params, timeout=timeout)
         # TODO: upgrade in the future
         # 暂时特殊处理此接口，统一丰度数据的返回方式
-        ret = {}
+        ret = models.Model({})
         ret['count'] = count = pagination['count']
         next_page = pagination['page'] + 1
         if count == 0:
@@ -489,7 +489,7 @@ class API(object):
             Model: 功能丰度数据详情；
         """
         params.update({
-            'biosample_id': biosample_id,
+            'biosample_id': biosample_id.upper(),
             'catalog': catalog,
             'ids': ids,
             'next_page': next_page,
@@ -524,7 +524,7 @@ class API(object):
             Model: 基因丰度数据详情；
         """
         params.update({
-            'biosample_id': biosample_id,
+            'biosample_id': biosample_id.upper(),
             'catalog': catalog,
             'data_type': data_type,
             'ids': ids,
@@ -762,7 +762,7 @@ class API(object):
         params = {}
         params.update(kwargs)
         params.update({
-            'biosample_id': biosample_id,
+            'biosample_id': biosample_id.upper(),
             'data_element_id': data_element_id,
             'time_dimension': time_dimension,
             'start_time': start_time,
@@ -801,7 +801,7 @@ class API(object):
         params = {}
         params.update(kwargs)
         params.update({
-            'biosample_id': biosample_id,
+            'biosample_id': biosample_id.upper(),
             'data_element_id': data_element_id,
             'start_time': start_time,
             'end_time': end_time,
@@ -838,7 +838,7 @@ class API(object):
         params = {}
         params.update(kwargs)
         params.update({
-            'biosample_id': biosample_id,
+            'biosample_id': biosample_id.upper(),
             'data_element_ids': data_element_ids,
             'collection_id': collection_id,
             'namespace': namespace,
