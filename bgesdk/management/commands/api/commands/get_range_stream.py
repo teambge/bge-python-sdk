@@ -90,7 +90,7 @@ class Command(BaseCommand):
         try:
             result = api.get_range_stream(
                 data_element_id,
-                biosample_id=args.biosample_id,
+                biosample_id=args.biosample_id.upper(),
                 start_time=args.start_time,
                 end_time=args.end_time,
                 sort_direction=args.sort_direction,

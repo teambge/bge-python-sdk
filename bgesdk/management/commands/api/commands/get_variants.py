@@ -48,7 +48,7 @@ class Command(BaseCommand):
     def handler(self, args):
         pretty = args.pretty
         access_token = args.access_token
-        biosample_id = args.biosample_id
+        biosample_id = args.biosample_id.upper()
         rsids = args.rsids
         project = get_active_project()
         oauth2_section = DEFAULT_OAUTH2_SECTION

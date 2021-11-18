@@ -75,7 +75,7 @@ class Command(BaseCommand):
     def handler(self, args):
         pretty = args.pretty
         access_token = args.access_token
-        biosample_id = args.biosample_id
+        biosample_id = args.biosample_id.upper()
         catalog = args.catalog
         data_type = args.data_type
         project = get_active_project()
