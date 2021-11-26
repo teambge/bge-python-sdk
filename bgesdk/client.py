@@ -287,9 +287,11 @@ class API(object):
         Returns:
             list: 变异位点信息；
         """
+        if biosample_id:
+            biosample_id = biosample_id.upper()
         params.update({
             'rsids': rsids,
-            'biosample_id': biosample_id.upper()
+            'biosample_id': biosample_id
         })
         timeout = self.timeout
         verbose = self.verbose
@@ -331,8 +333,10 @@ class API(object):
         page = 1
         if next_page is not None:
             page = next_page
+        if biosample_ids:
+            biosample_ids = biosample_ids.upper()
         params.update({
-            'biosample_ids': biosample_ids.upper(),
+            'biosample_ids': biosample_ids,
             'biosample_sites': biosample_sites,
             'omics': omics,
             'project_ids': project_ids,
@@ -368,7 +372,9 @@ class API(object):
         Returns:
             Model: 样品数据；
         """
-        url = '/samples/{}'.format(biosample_id.upper())
+        if biosample_id:
+            biosample_id = biosample_id.upper()
+        url = '/samples/{}'.format(biosample_id)
         timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
@@ -420,9 +426,11 @@ class API(object):
         if not kwargs:
             # 无更新
             return
+        if biosample_id:
+            biosample_id = biosample_id.upper()
         data = {}
         data.update(kwargs)
-        data['biosample_id'] = biosample_id.upper()
+        data['biosample_id'] = biosample_id
         timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
@@ -445,8 +453,10 @@ class API(object):
         Returns:
             Model: 类群丰度数据详情；
         """
+        if biosample_id:
+            biosample_id = biosample_id.upper()
         params.update({
-            'biosample_id': biosample_id.upper(),
+            'biosample_id': biosample_id,
             'taxon_id': taxon_ids,
             'limit': limit
         })
@@ -488,8 +498,10 @@ class API(object):
         Returns:
             Model: 功能丰度数据详情；
         """
+        if biosample_id:
+            biosample_id = biosample_id.upper()
         params.update({
-            'biosample_id': biosample_id.upper(),
+            'biosample_id': biosample_id,
             'catalog': catalog,
             'ids': ids,
             'next_page': next_page,
@@ -523,8 +535,10 @@ class API(object):
         Returns:
             Model: 基因丰度数据详情；
         """
+        if biosample_id:
+            biosample_id = biosample_id.upper()
         params.update({
-            'biosample_id': biosample_id.upper(),
+            'biosample_id': biosample_id,
             'catalog': catalog,
             'data_type': data_type,
             'ids': ids,
@@ -759,10 +773,12 @@ class API(object):
         Returns:
             Model: 返回的聚合数据
         """
+        if biosample_id:
+            biosample_id = biosample_id.upper()
         params = {}
         params.update(kwargs)
         params.update({
-            'biosample_id': biosample_id.upper(),
+            'biosample_id': biosample_id,
             'data_element_id': data_element_id,
             'time_dimension': time_dimension,
             'start_time': start_time,
@@ -798,10 +814,12 @@ class API(object):
         Returns:
             Model: 返回的数据流数据
         """
+        if biosample_id:
+            biosample_id = biosample_id.upper()
         params = {}
         params.update(kwargs)
         params.update({
-            'biosample_id': biosample_id.upper(),
+            'biosample_id': biosample_id,
             'data_element_id': data_element_id,
             'start_time': start_time,
             'end_time': end_time,
@@ -835,10 +853,12 @@ class API(object):
         Returns:
             Model: 返回的数据项数据；
         """
+        if biosample_id:
+            biosample_id = biosample_id.upper()
         params = {}
         params.update(kwargs)
         params.update({
-            'biosample_id': biosample_id.upper(),
+            'biosample_id': biosample_id,
             'data_element_ids': data_element_ids,
             'collection_id': collection_id,
             'namespace': namespace,
