@@ -96,7 +96,7 @@ class Command(BaseCommand):
                 args.time_dimension,
                 args.start_time,
                 end_time=args.end_time,
-                biosample_id=args.biosample_id.upper(),
+                biosample_id=args.biosample_id,
                 interval=args.interval,
                 periods=args.periods
             )
