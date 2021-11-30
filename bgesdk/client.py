@@ -273,7 +273,7 @@ class API(object):
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
-        result = request.get('/user', params=params, timeout=timeout)
+        result = request.get('/profile', params=params, timeout=timeout)
         return models.Model(result)
 
     def get_variants(self, biosample_id, rsids, **params):
