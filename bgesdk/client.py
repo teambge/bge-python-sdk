@@ -318,34 +318,33 @@ class API(object):
             bed_file(str): 需要抽取区域的 bed 文件路径，文件须为 zip 压缩文件
                            且内容不得超过 100w 行
         """
-        if biosample_id:
-            biosample_id = biosample_id.upper()
         timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         if regions is not None and bed_file is not None:
             raise BGEError(
-                'regions and bed_ File needs to provide one of them')
+                'regions and bed_file needs to provide one of them')
         if regions is None and bed_file is None:
             raise BGEError(
-                'Regions and bed_ File cannot be provided at the same time')
+                'Regions and bed_file cannot be provided at the same time')
+        if biosample_id:
+            biosample_id = biosample_id.upper()
         data = {}
         data['biosample_id'] = biosample_id
         data['only_variant_site'] = only_variant_site
         if regions is not None:
             data['regions'] = regions
+            files = None
         else:
-            bed_file = {'bed_file': open(str(bed_file), 'rb')}
+            files = {
+                'bed_file': open(str(bed_file), 'rb')
+            }
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
         result = request.post(
-            '/professional/variant', data=data, files=bed_file,
-            timeout=timeout)
+            '/professional/variant', data=data, files=files, timeout=timeout)
         return models.Model(result)
-
-
-
 
     def get_samples(self, biosample_ids=None, biosample_sites=None,
                     omics=None, project_ids=None, organisms=None,
