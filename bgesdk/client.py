@@ -314,7 +314,7 @@ class API(object):
         Args:
             biosample_id(str): 生物样品编号；
             only_variant_site(bool): 是否仅输出变异位置，默认为True；
-            regions(str): 需要抽取区域的坐标数据,json格式，数组长度不得超过5000；
+            regions(list): 需要抽取区域的坐标数据，数组长度不得超过5000；
             bed_file(str): 需要抽取区域的 bed 文件路径，文件须为 zip 压缩文件
                            且内容不得超过 100w 行
         """
@@ -323,17 +323,17 @@ class API(object):
         max_retries = self.max_retries
         if regions is not None and bed_file is not None:
             raise BGEError(
-                'regions and bed_file needs to provide one of them')
+                'regions and bed_file needs to provided one of them.')
         if regions is None and bed_file is None:
             raise BGEError(
-                'Regions and bed_file cannot be provided at the same time')
+                'Regions and bed_file cannot be provided at the same time.')
         if biosample_id:
             biosample_id = biosample_id.upper()
         data = {}
         data['biosample_id'] = biosample_id
         data['only_variant_site'] = only_variant_site
         if regions is not None:
-            data['regions'] = regions
+            data['regions'] = json.dumps(regions)
             files = None
         else:
             files = {
