@@ -323,7 +323,7 @@ class API(object):
         max_retries = self.max_retries
         if regions is not None and bed_file is not None:
             raise BGEError(
-                'regions and bed_file needs to provided one of them.')
+                'Regions and bed_file needs to provided one of them.')
         if regions is None and bed_file is None:
             raise BGEError(
                 'Regions and bed_file cannot be provided at the same time.')
@@ -333,6 +333,9 @@ class API(object):
         data['biosample_id'] = biosample_id
         data['only_variant_site'] = only_variant_site
         if regions is not None:
+            if not isinstance(regions, list):
+                raise BGEError(
+                    'Regions parameter type is array')
             data['regions'] = json.dumps(regions)
             files = None
         else:
