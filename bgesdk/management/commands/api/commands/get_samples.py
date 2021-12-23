@@ -66,6 +66,12 @@ class Command(BaseCommand):
                 'hers/appendix?id=样品状态编码表'
         )
         parser.add_argument(
+            '--require_files',
+            default=None,
+            action='store_true',
+            help='要求接口返回值中包含文件相关字段 files。'
+        )
+        parser.add_argument(
             '-p',
             '--next_page',
             type=int,

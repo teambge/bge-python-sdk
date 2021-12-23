@@ -352,7 +352,8 @@ class API(object):
     def get_samples(self, biosample_ids=None, biosample_sites=None,
                     omics=None, project_ids=None, organisms=None,
                     data_availability=None, statuses=None,
-                    next_page=None, limit=50, **kwargs):
+                    require_files=None, next_page=None, limit=50,
+                    **kwargs):
         """获取样品列表
 
         授权码模式: 可通过本接口获取授权用户的样品；
@@ -388,7 +389,8 @@ class API(object):
             'data_availability': data_availability,
             'statuses': statuses,
             'page': page,
-            'limit': limit
+            'limit': limit,
+            'require_files': require_files
         })
         timeout = self.timeout
         verbose = self.verbose
@@ -404,7 +406,7 @@ class API(object):
         result['result'] = data
         return result
 
-    def get_sample(self, biosample_id):
+    def get_sample(self, biosample_id, require_files=None):
         """获取样品
 
         授权码模式: 可通过本接口获取授权用户的样品；
@@ -419,13 +421,15 @@ class API(object):
         if biosample_id:
             biosample_id = biosample_id.upper()
         url = '/samples/{}'.format(biosample_id)
+        params = {}
+        params['require_files'] = require_files
         timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
-        result = request.get(url, timeout=timeout)
+        result = request.get(url, params=params, timeout=timeout)
         return models.Model(result)
 
     def register_sample(self, external_sample_id, biosample_site,
