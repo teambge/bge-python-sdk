@@ -383,7 +383,10 @@ class Command(BaseCommand):
         prompt = '？请输入解读模型编号 [{}]：'.format(default_model_id)
         while True:
             model_id = input(prompt)
-            if not model_id_match(model_id):
+            if not model_id and default_model_id:
+                model_id = default_model_id
+                break
+            if model_id and not model_id_match(model_id):
                 output('模型编号只能包含数字、大小写字母')
                 continue
             if model_id:
