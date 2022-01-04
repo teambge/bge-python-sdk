@@ -13,3 +13,4 @@ test_env.sh
 .vscode/
 .eggs/
 .pytest_cache/
+.python-version
