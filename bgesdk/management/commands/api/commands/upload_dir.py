@@ -9,7 +9,10 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project, config_get, read_config, output
+    get_active_project,
+    config_get,
+    read_config,
+    output
 )
 from bgesdk.version import __version__
 
@@ -58,7 +61,6 @@ class Command(BaseCommand):
             filepath = join(dirpath, filename)
             if isfile(filepath):
                 files.append(filepath)
-                continue
         if not files:
             output('文件夹中没有可上传的文件')
             sys.exit(1)

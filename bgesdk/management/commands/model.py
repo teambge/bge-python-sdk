@@ -21,9 +21,16 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project, config_get, get_home, read_config,
-    generate_container_name, get_config_parser, confirm,
-    output, get_sys_user, SYS_STR
+    get_active_project,
+    config_get,
+    get_home,
+    read_config,
+    generate_container_name,
+    get_config_parser,
+    confirm,
+    output,
+    get_sys_user,
+    SYS_STR
 )
 from bgesdk.utils import human_byte
 from bgesdk.version import __version__
@@ -109,6 +116,17 @@ TOTAL_PROGRESS = {
     'STARTED': '任务已开始',
     'SUCCESS': '任务执行成功'
 }
+
+BGE_IGNORE_FILE = '.bgeignore'
+
+CREATE_MESSAGE = '创建 {} ... '
+INSTALL_DOCKER_MESSAGE = '\
+请先安装 docker，参考 https://docs.docker.com/engine/install/'
+WAIT_MESSAGE = '已等待 {}s，{}'
+TASK_ERROR_MESSAGE = '已等待 {}s，任务状态异常：{}'
+
+WHICH_DOCKER = 'which docker'
+WHEREIS_DOCKER = 'whereis docker'
 
 
 class Command(BaseCommand):
@@ -325,7 +343,7 @@ class Command(BaseCommand):
         bge_dir = join(scaffold_dir, '.bge')
         lib_dir = join(scaffold_dir, 'lib')
         for dir_ in [scaffold_dir, bge_dir, lib_dir]:
-            sys.stdout.write('创建 {} ... '.format(dir_))
+            sys.stdout.write(CREATE_MESSAGE.format(dir_))
             sys.stdout.flush()
             if not exists(dir_):
                 os.makedirs(dir_)
@@ -337,11 +355,11 @@ class Command(BaseCommand):
             else:
                 output('已存在')
         model_config_path = join(scaffold_dir, 'model.ini')
-        output('创建 {} ... '.format(model_config_path))
+        output(CREATE_MESSAGE.format(model_config_path))
         if not exists(model_config_path):
             open(model_config_path, 'w').write(MODEL_CONFIG_TEMPLATE)
-        ignore_path = join(scaffold_dir, '.bgeignore')
-        output('创建 {} ... '.format(ignore_path))
+        ignore_path = join(scaffold_dir, BGE_IGNORE_FILE)
+        output(CREATE_MESSAGE.format(ignore_path))
         if not exists(ignore_path):
             open(ignore_path, 'w').write(BGEIGNORE_TEMPLATE)
         script_name = 'main.py'
@@ -380,22 +398,7 @@ class Command(BaseCommand):
             default_timeout = config_get(
                 config.getint, section_name, 'timeout')
         # model_id
-        prompt = '？请输入解读模型编号 [{}]：'.format(default_model_id)
-        while True:
-            model_id = input(prompt)
-            if not model_id and default_model_id:
-                model_id = default_model_id
-                break
-            if model_id and not model_id_match(model_id):
-                output('模型编号只能包含数字、大小写字母')
-                continue
-            if model_id:
-                break
-            if not default_model_id:
-                output('模型编号未设置...')
-                continue
-            model_id = default_model_id
-            break
+        model_id = self._input_model_id(default=default_model_id)
         # runtime
         try:
             index = RUNTIME_CHOICES.index(default_runtime)
@@ -432,6 +435,21 @@ class Command(BaseCommand):
             timeout = default_timeout
         return model_id, runtime, memory_size, timeout
 
+    def _input_model_id(self, default=''):
+        prompt = '？请输入解读模型编号 [{}]：'.format(default)
+        while True:
+            model_id = input(prompt)
+            if not model_id:
+                if default:
+                    model_id = default
+                    break
+                output('模型编号未设置...')
+            else:
+                if model_id_match(model_id):
+                    break
+                output('模型编号只能包含数字、大小写字母')
+        return model_id
+
     def _save_model_config(self, model_id, runtime, memory_size, timeout, home=None):
         # save
         config_path = self.get_model_config_path(home=home)
@@ -459,31 +477,19 @@ class Command(BaseCommand):
         runtime = config_get(config.get, section_name, 'runtime')
         image_name = RUNTIMES[runtime]
         container_name = generate_container_name(model_id)
-        deps = []
-        command = 'whereis docker' if SYS_STR == 'windows' else 'which docker'
+        command = WHEREIS_DOCKER if SYS_STR == 'windows' else WHICH_DOCKER
         with os.popen(command) as f:
             docker_path = f.read()
         if not docker_path:
-            output(
-                '请先安装 docker，参考 https://docs.docker.com/engine/install/')
+            output(INSTALL_DOCKER_MESSAGE)
             sys.exit(1)
-        try:
-            client = docker.from_env()
-        except docker.errors.DockerException:
-            output('请确认 docker 服务是否已开启。')
-            output('启动命令：/etc/init.d/docker start')
-            sys.exit(1)
+        client = self._get_docker_client()
         command = ('pip install --no-deps bge-python-sdk pimento '
                    'requests_toolbelt -t /code/lib')
         try:
             client.images.get(image_name)
         except docker.errors.NotFound:
-            output('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
-            return_code = os.system('docker pull {}'.format(image_name))
-            if return_code != 0:
-                output('镜像拉取失败，请重试')
-                sys.exit(1)
-            output('镜像拉取成功')
+            pull_image(image_name)
         output('开始安装模型依赖包...')
         command = ('sh -c "{}"').format(command)
         user = get_sys_user()
@@ -492,7 +498,7 @@ class Command(BaseCommand):
             if container.status != 'exited':
                 try:
                     container.remove(force=True)
-                except:
+                except Exception:
                     pass
         except docker.errors.NotFound:
             pass
@@ -514,7 +520,7 @@ class Command(BaseCommand):
             if container.status != 'exited':
                 try:
                     container.remove(force=True)
-                except:
+                except Exception:
                     pass
         output('安装完成')
 
@@ -543,26 +549,7 @@ class Command(BaseCommand):
         with open(task_path, 'w') as f:
             f.write(task_id)
         output('上传模型扩展集任务返回结果：')
-        seconds = 0
-        while True:
-            result = api.task(task_id)
-            progress = result.progress
-            if progress not in TOTAL_PROGRESS:
-                output('已等待 {}s，任务状态异常：{}'.format(seconds, progress))
-                try:
-                    os.unlink(task_path)
-                except (IOError, OSError):
-                    pass
-                sys.exit(1)
-            output('已等待 {}s，{}'.format(seconds, TOTAL_PROGRESS[progress]))
-            if progress in ('SUCCESS', 'FAILURE', 'REVOKED'):
-                break
-            sleep(1)
-            seconds += 1
-        try:
-            os.unlink(task_path)
-        except (IOError, OSError):
-            pass
+        progress = self._wait_model_task(api, task_id, task_path)
         if 'SUCCESS' == progress:
             output('模型 {} 上传模型扩展集成功。'.format(model_id))
         elif 'FAILURE' == progress:
@@ -596,7 +583,7 @@ class Command(BaseCommand):
             access_token, endpoint=endpoint, timeout=DEFAULT_MODEL_TIMEOUT)
         object_name = None
         if not ignore_source:
-            ignore_path = join(home, '.bgeignore')
+            ignore_path = join(home, BGE_IGNORE_FILE)
             if not exists(ignore_path):
                 output('未发现 .bgeignore 文件，初始化 {} ... '.format(ignore_path))
                 open(ignore_path, 'w').write(BGEIGNORE_TEMPLATE)
@@ -636,18 +623,27 @@ class Command(BaseCommand):
         with open(task_path, 'w') as f:
             f.write(task_id)
         output('模型部署任务返回结果：')
+        progress = self._wait_model_task(api, task_id, task_path)
+        if 'SUCCESS' == progress:
+            output('模型 {} 灰度部署成功。'.format(model_id))
+        elif 'FAILURE' == progress:
+            output('模型 {} 灰度部署失败。任务结果：{}'.format(model_id, result))
+        elif 'REVOKED' == progress:
+            output('模型 {} 灰度部署任务已被撤销。'.format(model_id))
+
+    def _wait_model_task(self, api, task_id, task_path):
         seconds = 0
         while True:
             result = api.task(task_id)
             progress = result.progress
             if progress not in TOTAL_PROGRESS:
-                output('已等待 {}s，任务状态异常：{}'.format(seconds, progress))
+                output(TASK_ERROR_MESSAGE.format(seconds, progress))
                 try:
                     os.unlink(task_path)
                 except (IOError, OSError):
                     pass
                 sys.exit(1)
-            output('已等待 {}s，{}'.format(seconds, TOTAL_PROGRESS[progress]))
+            output(WAIT_MESSAGE.format(seconds, TOTAL_PROGRESS[progress]))
             if progress in ('SUCCESS', 'FAILURE', 'REVOKED'):
                 break
             sleep(1)
@@ -656,12 +652,7 @@ class Command(BaseCommand):
             os.unlink(task_path)
         except (IOError, OSError):
             pass
-        if 'SUCCESS' == progress:
-            output('模型 {} 灰度部署成功。'.format(model_id))
-        elif 'FAILURE' == progress:
-            output('模型 {} 灰度部署失败。任务结果：{}'.format(model_id, result))
-        elif 'REVOKED' == progress:
-            output('模型 {} 灰度部署任务已被撤销。'.format(model_id))
+        return progress
 
     def _zip_codedir(self, home, ziph):
         home = home.rstrip('/')
@@ -690,7 +681,7 @@ class Command(BaseCommand):
     def get_ignore_patterns(self, home):
         ignore_patterns = []
         home = home.rstrip('/')
-        ignore_path = join(home, '.bgeignore')
+        ignore_path = join(home, BGE_IGNORE_FILE)
         with open(ignore_path) as fp:
             for _ in fp.readlines():
                 _ = _.strip()
@@ -704,7 +695,6 @@ class Command(BaseCommand):
     def publish_model(self, args):
         """发布模型到稳定版"""
         message = args.message
-        home = get_home()
         project = get_active_project()
         config_path = self.get_model_config_path()
         config = get_config_parser(config_path)
@@ -750,26 +740,7 @@ class Command(BaseCommand):
         task_path = join(home, '.bge', 'task_id')
         with open(task_path, 'w') as f:
             f.write(task_id)
-        seconds = 0
-        while True:
-            result = api.task(task_id)
-            progress = result.progress
-            if progress not in TOTAL_PROGRESS:
-                output('已等待 {}s，任务状态异常：{}'.format(seconds, progress))
-                try:
-                    os.unlink(task_path)
-                except (IOError, OSError):
-                    pass
-                sys.exit(1)
-            output('已等待 {}s，{}'.format(seconds, TOTAL_PROGRESS[progress]))
-            if progress in ('SUCCESS', 'FAILURE', 'REVOKED'):
-                break
-            sleep(1)
-            seconds += 1
-        try:
-            os.unlink(task_path)
-        except (IOError, OSError):
-            pass
+        progress = self._wait_model_task(api, task_id, task_path)
         if 'SUCCESS' == progress:
             output('模型 {} 灰度版已成功回滚至版本 {}。'.format(model_id, version))
         elif 'FAILURE' == progress:
@@ -781,7 +752,6 @@ class Command(BaseCommand):
     def model_versions(self, args):
         limit = args.limit
         next_page = args.next_page
-        home = get_home()
         project = get_active_project()
         config_path = self.get_model_config_path()
         config = get_config_parser(config_path)
@@ -835,7 +805,6 @@ class Command(BaseCommand):
             params = dict(args.args)
         draft = args.draft
         test = args.test
-        home = get_home()
         project = get_active_project()
         config_path = self.get_model_config_path()
         config = get_config_parser(config_path)
@@ -901,19 +870,13 @@ class Command(BaseCommand):
             deps.append(pkgs)
         if requirements:
             deps.append('-r {}'.format(requirements))
-        command = 'whereis docker' if SYS_STR == 'windows' else 'which docker'
+        command = WHEREIS_DOCKER if SYS_STR == 'windows' else WHICH_DOCKER
         with os.popen(command) as f:
             docker_path = f.read()
         if not docker_path:
-            output(
-                '请先安装 docker，参考 https://docs.docker.com/engine/install/')
+            output(INSTALL_DOCKER_MESSAGE)
             sys.exit(1)
-        try:
-            client = docker.from_env()
-        except docker.errors.DockerException:
-            output('请确认 docker 服务是否已开启。')
-            output('启动命令：/etc/init.d/docker start')
-            sys.exit(1)
+        client = self._get_docker_client()
         command = ['pip install']
         if upgrade:
             command.append('--upgrade')
@@ -924,12 +887,7 @@ class Command(BaseCommand):
         try:
             client.images.get(image_name)
         except docker.errors.NotFound:
-            output('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
-            return_code = os.system('docker pull {}'.format(image_name))
-            if return_code != 0:
-                output('镜像拉取失败，请重试')
-                sys.exit(1)
-            output('镜像拉取成功')
+            pull_image(image_name)
         output('开始安装模型依赖包...')
         command = ('sh -c "{}"').format(command)
         user = get_sys_user()
@@ -938,7 +896,7 @@ class Command(BaseCommand):
             if container.status != 'exited':
                 try:
                     container.remove(force=True)
-                except:
+                except Exception:
                     pass
         except docker.errors.NotFound:
             pass
@@ -960,7 +918,7 @@ class Command(BaseCommand):
             if container.status != 'exited':
                 try:
                     container.remove(force=True)
-                except:
+                except Exception:
                     pass
         output('安装完成')
 
@@ -974,28 +932,17 @@ class Command(BaseCommand):
         runtime = config_get(config.get, section_name, 'runtime')
         image_name = RUNTIMES[runtime]
         container_name = generate_container_name(model_id)
-        command = 'whereis docker' if SYS_STR == 'windows' else 'which docker'
+        command = WHEREIS_DOCKER if SYS_STR == 'windows' else WHICH_DOCKER
         with os.popen(command) as f:
             docker_path = f.read()
         if not docker_path:
-            output(
-                '请先安装 docker，参考 https://docs.docker.com/engine/install/')
+            output(INSTALL_DOCKER_MESSAGE)
             sys.exit(1)
-        try:
-            client = docker.from_env()
-        except docker.errors.DockerException:
-            output('请确认 docker 服务是否已开启。')
-            output('启动命令：/etc/init.d/docker start')
-            sys.exit(1)
+        client = self._get_docker_client()
         try:
             client.images.get(image_name)
         except docker.errors.NotFound:
-            output('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
-            return_code = os.system('docker pull {}'.format(image_name))
-            if return_code != 0:
-                output('镜像拉取失败，请重试')
-                sys.exit(1)
-            output('镜像拉取成功')
+            pull_image(image_name)
         command = 'python -u /server/app.py'
         user = get_sys_user()
         try:
@@ -1003,7 +950,7 @@ class Command(BaseCommand):
             if container.status != 'exited':
                 try:
                     container.remove(force=True)
-                except:
+                except Exception:
                     pass
         except docker.errors.NotFound:
             pass
@@ -1030,5 +977,27 @@ class Command(BaseCommand):
             if container.status != 'exited':
                 try:
                     container.remove(force=True)
-                except:
+                except Exception:
                     pass
+
+    def _get_docker_client(self):
+        try:
+            client = docker.from_env()
+        except docker.errors.DockerException:
+            notice_docker()
+            sys.exit(1)
+        return client
+
+
+def notice_docker():
+    output('请确认 docker 服务是否已开启。')
+    output('启动命令：/etc/init.d/docker start')
+
+
+def pull_image(image_name):
+    output('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
+    return_code = os.system('docker pull {}'.format(image_name))
+    if return_code != 0:
+        output('镜像拉取失败，请重试')
+        sys.exit(1)
+    output('镜像拉取成功')

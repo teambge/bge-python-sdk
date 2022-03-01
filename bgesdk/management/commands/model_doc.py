@@ -10,14 +10,26 @@ from bgesdk.client import API
 from bgesdk.error import APIError
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.constants import (
-    TAB_CHOICES, TITLE_NAME, API_TABLE, DEFAULT_TOKEN_SECTION,
-    DEFAULT_OAUTH2_SECTION, DEFAULT_MODEL_TIMEOUT
+    TAB_CHOICES,
+    TITLE_NAME,
+    API_TABLE,
+    DEFAULT_TOKEN_SECTION,
+    DEFAULT_OAUTH2_SECTION,
+    DEFAULT_MODEL_TIMEOUT
 )
 from bgesdk.management.utils import (
-    config_get, get_active_project, read_config, get_home,
-    output, SYS_STR
+    config_get,
+    get_active_project,
+    read_config,
+    get_home,
+    output,
+    SYS_STR
 )
 from bgesdk.management.validate import validator_doc
+
+
+TABLE_MESSAGE = '| {} | {} |'
+TITLE_MESSAGE = '### {}'
 
 
 class Command(BaseCommand):
@@ -170,15 +182,15 @@ class Command(BaseCommand):
             join_model_id = None
             science_detail_title = None
             if key == 'brief_intro':
-                title_line = '### {}'.format(value)
+                title_line = TITLE_MESSAGE.format(value)
                 join_model_id = '**model_id**: `{}`'.format(model_id)
-                science_detail_title = '### {}'.format('科学细节')
+                science_detail_title = TITLE_MESSAGE.format('科学细节')
             handle_content = self._join_content(content.get(key, {}))
             join_lines.append(title_line)
             join_lines.extend(handle_content)
             join_lines.append(join_model_id)
             join_lines.append(science_detail_title)
-        api_title = '### {}'.format('API调用')
+        api_title = TITLE_MESSAGE.format('API调用')
         join_lines.append(api_title)
 
         for key, value in API_TABLE.items():
@@ -186,9 +198,7 @@ class Command(BaseCommand):
             params_line = '![{}](https://img.shields.io/badge/' \
                           '{}-{}-blue)'.format(key, value, key)
             params = dict()
-            if key == 'QueryParams':
-                pass
-            elif key == 'Success':
+            if key == 'Success':
                 params = content.get('return_params', None)
             elif key == 'State':
                 params = content.get('state_explain', None)
@@ -199,11 +209,9 @@ class Command(BaseCommand):
         example_result_line = '![Success](https://img.shields.io/badge/' \
                               '输出-Success-green)'
         json_str = '```json'
-        example_result = content.get('example_result')
-        example_result_json = ''
-        if example_result:
-            example_result_json = json.dumps(
-                example_result, sort_keys=False, indent=4)
+        example_result = content.get('example_result', {})
+        example_result_json = json.dumps(
+            example_result, sort_keys=False, indent=4)
         last_json_str = '```'
         join_lines.append(example_result_line)
         join_lines.append(json_str)
@@ -211,14 +219,13 @@ class Command(BaseCommand):
         join_lines.append(last_json_str)
         join_lines.append(divid_line)
 
-        ref_line = '### {}'.format('参考文献')
+        ref_line = TITLE_MESSAGE.format('参考文献')
         join_lines.append(ref_line)
         refs = content.get('ref', [])
         ref_lines = []
-        if refs:
-            for index, ref in enumerate(refs):
-                ref_str = r'\[{}]: {}{}'.format(index + 1, ref, '<br>')
-                ref_lines.append(ref_str)
+        for index, ref in enumerate(refs):
+            ref_str = r'\[{}]: {}{}'.format(index + 1, ref, '<br>')
+            ref_lines.append(ref_str)
         join_lines.append(ref_lines)
         for line in join_lines:
             if isinstance(line, list):
@@ -266,12 +273,12 @@ class Command(BaseCommand):
 
     def _join_table(self, params):
         table_lines = []
-        table_1 = '| {} | {} |'.format('数据名'.ljust(29), '描述'.ljust(29))
-        table_2 = '| {} | {} |'.format('-' * 31, '-' * 31)
+        table_1 = TABLE_MESSAGE.format('数据名'.ljust(29), '描述'.ljust(29))
+        table_2 = TABLE_MESSAGE.format('-' * 31, '-' * 31)
         table_lines.append(table_1)
         table_lines.append(table_2)
         for key, value in params.items():
-            param_line = '| {} | {} |'.format(
+            param_line = TABLE_MESSAGE.format(
                 str(key).ljust(31), str(value))
             table_lines.append(param_line)
         return table_lines

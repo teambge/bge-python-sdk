@@ -41,6 +41,8 @@ __all__ = ['OAuth2', 'API', 'endpoints']
 
 endpoints = [v['endpoint'] for v in constants.ENDPOINTS]
 
+ACCESS_TOKEN_API = '/oauth2/access_token'
+
 
 def progress_callback(bytes_consumed, total_bytes):
     sys.stdout.write(
@@ -65,7 +67,7 @@ def alive(self):
         self.endpoint, max_retries=max_retries, verbose=verbose)
     try:
         request.get('/ping', timeout=timeout)
-    except Exception as e:
+    except Exception:
         return False
     return True
 
@@ -151,7 +153,7 @@ class OAuth2(object):
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
         result = request.post(
-            '/oauth2/access_token', data=data, timeout=timeout)
+            ACCESS_TOKEN_API, data=data, timeout=timeout)
         return models.AuthorizationCodeToken(self, result)
 
     def exchange_refresh_token(self, refresh_token):
@@ -175,7 +177,7 @@ class OAuth2(object):
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
         result = request.post(
-            '/oauth2/access_token', data=data, timeout=timeout)
+            ACCESS_TOKEN_API, data=data, timeout=timeout)
         return models.AuthorizationCodeToken(self, result)
 
     def get_credentials_token(self):
@@ -195,7 +197,7 @@ class OAuth2(object):
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
         result = request.post(
-            '/oauth2/access_token', data=data, timeout=timeout)
+            ACCESS_TOKEN_API, data=data, timeout=timeout)
         return models.ClientCredentialsToken(self, result)
 
     def get_api(self, access_token):

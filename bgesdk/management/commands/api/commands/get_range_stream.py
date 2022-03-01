@@ -6,7 +6,10 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project, config_get, read_config, output
+    get_active_project,
+    config_get,
+    read_config,
+    output
 )
 from bgesdk.models import ModelEncoder
 from bgesdk.version import __version__
@@ -36,12 +39,12 @@ class Command(BaseCommand):
         parser.add_argument(
             '--start_time',
             type=str,
-            help='数据元编号。'
+            help='起始时间。'
         )
         parser.add_argument(
             '--end_time',
             type=str,
-            help='数据元编号。'
+            help='终止时间。'
         )
         parser.add_argument(
             '--sort_direction',
