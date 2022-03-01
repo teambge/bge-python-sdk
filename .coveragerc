@@ -1,0 +1,7 @@
+
+[run]
+omit = tests/*
+source = bgesdk
+
+[paths]
+source = bgesdk

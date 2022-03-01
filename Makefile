@@ -15,6 +15,7 @@ wheel:
 
 # 单元测试
 test:
+	pip install pytest pytest-cov; \
 	chmod +x ./test_env.sh; \
 	./test_env.sh
 
