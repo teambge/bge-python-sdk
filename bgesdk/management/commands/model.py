@@ -469,59 +469,21 @@ class Command(BaseCommand):
         output('解读模型配置已保存至：{}'.format(config_path))
 
     def _install_sdk(self):
-        home = get_home()
         config_path = self.get_model_config_path()
         config = get_config_parser(config_path)
         section_name = DEFAULT_MODEL_SECTION
         model_id = config_get(config.get, section_name, 'model_id')
         runtime = config_get(config.get, section_name, 'runtime')
-        image_name = RUNTIMES[runtime]
-        container_name = generate_container_name(model_id)
-        command = WHEREIS_DOCKER if SYS_STR == 'windows' else WHICH_DOCKER
-        with os.popen(command) as f:
-            docker_path = f.read()
-        if not docker_path:
-            output(INSTALL_DOCKER_MESSAGE)
-            sys.exit(1)
         client = self._get_docker_client()
         command = ('pip install --no-deps bge-python-sdk pimento '
                    'requests_toolbelt -t /code/lib')
-        try:
-            client.images.get(image_name)
-        except docker.errors.NotFound:
-            pull_image(image_name)
+        image_name = RUNTIMES[runtime]
+        self._get_or_pull_image(client, image_name)
         output('开始安装模型依赖包...')
         command = ('sh -c "{}"').format(command)
-        user = get_sys_user()
-        try:
-            container = client.containers.get(container_name)
-            if container.status != 'exited':
-                try:
-                    container.remove(force=True)
-                except Exception:
-                    pass
-        except docker.errors.NotFound:
-            pass
-        container = client.containers.run(
-            image_name,
-            command=command,
-            name=container_name,
-            volumes={home: { 'bind': WORKDIR, 'mode': 'rw' }},
-            stop_signal='SIGINT',
-            user=user,
-            detach=True,
-            auto_remove=True)
-        try:
-            logs = container.logs(stream=True)
-            for log in logs:
-                sys.stdout.write(log.decode('utf-8'))
-                sys.stdout.flush()
-        finally:
-            if container.status != 'exited':
-                try:
-                    container.remove(force=True)
-                except Exception:
-                    pass
+        container_name = generate_container_name(model_id)
+        self._force_remove_container(client, container_name)
+        self._run_by_container(client, image_name, command, container_name)
         output('安装完成')
 
     def upload_model_expfs(self, args):
@@ -857,69 +819,31 @@ class Command(BaseCommand):
         upgrade = args.upgrade
         force_reinstall = args.force_reinstall
         pkgs = ' '.join(package_name)
-        home = get_home()
         config_path = self.get_model_config_path()
         config = get_config_parser(config_path)
         section_name = DEFAULT_MODEL_SECTION
         model_id = config_get(config.get, section_name, 'model_id')
         runtime = config_get(config.get, section_name, 'runtime')
-        image_name = RUNTIMES[runtime]
-        container_name = generate_container_name(model_id)
-        deps = []
-        if pkgs:
-            deps.append(pkgs)
-        if requirements:
-            deps.append('-r {}'.format(requirements))
-        command = WHEREIS_DOCKER if SYS_STR == 'windows' else WHICH_DOCKER
-        with os.popen(command) as f:
-            docker_path = f.read()
-        if not docker_path:
-            output(INSTALL_DOCKER_MESSAGE)
-            sys.exit(1)
         client = self._get_docker_client()
         command = ['pip install']
         if upgrade:
             command.append('--upgrade')
         if force_reinstall:
             command.append('--force-reinstall')
+        deps = []
+        if pkgs:
+            deps.append(pkgs)
+        if requirements:
+            deps.append('-r {}'.format(requirements))
         command.append('-t /code/lib {}'.format(' '.join(deps)))
         command = ' '.join(command)
-        try:
-            client.images.get(image_name)
-        except docker.errors.NotFound:
-            pull_image(image_name)
+        image_name = RUNTIMES[runtime]
+        self._get_or_pull_image(client, image_name)
         output('开始安装模型依赖包...')
         command = ('sh -c "{}"').format(command)
-        user = get_sys_user()
-        try:
-            container = client.containers.get(container_name)
-            if container.status != 'exited':
-                try:
-                    container.remove(force=True)
-                except Exception:
-                    pass
-        except docker.errors.NotFound:
-            pass
-        container = client.containers.run(
-            image_name,
-            command=command,
-            name=container_name,
-            volumes={home: { 'bind': WORKDIR, 'mode': 'rw' }},
-            stop_signal='SIGINT',
-            user=user,
-            detach=True,
-            auto_remove=True)
-        try:
-            logs = container.logs(stream=True)
-            for log in logs:
-                sys.stdout.write(log.decode('utf-8'))
-                sys.stdout.flush()
-        finally:
-            if container.status != 'exited':
-                try:
-                    container.remove(force=True)
-                except Exception:
-                    pass
+        container_name = generate_container_name(model_id)
+        self._force_remove_container(client, container_name)
+        self._run_by_container(client, image_name, command, container_name)
         output('安装完成')
 
     def start_model(self, args):
@@ -930,30 +854,13 @@ class Command(BaseCommand):
         section_name = DEFAULT_MODEL_SECTION
         model_id = config_get(config.get, section_name, 'model_id')
         runtime = config_get(config.get, section_name, 'runtime')
-        image_name = RUNTIMES[runtime]
-        container_name = generate_container_name(model_id)
-        command = WHEREIS_DOCKER if SYS_STR == 'windows' else WHICH_DOCKER
-        with os.popen(command) as f:
-            docker_path = f.read()
-        if not docker_path:
-            output(INSTALL_DOCKER_MESSAGE)
-            sys.exit(1)
         client = self._get_docker_client()
-        try:
-            client.images.get(image_name)
-        except docker.errors.NotFound:
-            pull_image(image_name)
+        image_name = RUNTIMES[runtime]
+        self._get_or_pull_image(client, image_name)
         command = 'python -u /server/app.py'
         user = get_sys_user()
-        try:
-            container = client.containers.get(container_name)
-            if container.status != 'exited':
-                try:
-                    container.remove(force=True)
-                except Exception:
-                    pass
-        except docker.errors.NotFound:
-            pass
+        container_name = generate_container_name(model_id)
+        self._force_remove_container(client, container_name)
         container = client.containers.run(
             image_name,
             command=command,
@@ -981,23 +888,62 @@ class Command(BaseCommand):
                     pass
 
     def _get_docker_client(self):
+        command = WHEREIS_DOCKER if SYS_STR == 'windows' else WHICH_DOCKER
+        with os.popen(command) as f:
+            docker_path = f.read()
+        if not docker_path:
+            output(INSTALL_DOCKER_MESSAGE)
+            sys.exit(1)
         try:
             client = docker.from_env()
         except docker.errors.DockerException:
-            notice_docker()
+            output('请确认 docker 服务是否已开启。')
+            output('启动命令：/etc/init.d/docker start')
             sys.exit(1)
         return client
 
+    def _get_or_pull_image(self, client, image_name):
+        try:
+            client.images.get(image_name)
+        except docker.errors.NotFound:
+            output('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
+            return_code = os.system('docker pull {}'.format(image_name))
+            if return_code != 0:
+                output('镜像拉取失败，请重试')
+                sys.exit(1)
+            output('镜像拉取成功')
 
-def notice_docker():
-    output('请确认 docker 服务是否已开启。')
-    output('启动命令：/etc/init.d/docker start')
+    def _force_remove_container(self, client, container_name):
+        try:
+            container = client.containers.get(container_name)
+            if container.status != 'exited':
+                try:
+                    container.remove(force=True)
+                except Exception:
+                    pass
+        except docker.errors.NotFound:
+            pass
 
-
-def pull_image(image_name):
-    output('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
-    return_code = os.system('docker pull {}'.format(image_name))
-    if return_code != 0:
-        output('镜像拉取失败，请重试')
-        sys.exit(1)
-    output('镜像拉取成功')
+    def _run_by_container(self, client, image_name, command, container_name):
+        home = get_home()
+        user = get_sys_user
+        container = client.containers.run(
+            image_name,
+            command=command,
+            name=container_name,
+            volumes={home: { 'bind': WORKDIR, 'mode': 'rw' }},
+            stop_signal='SIGINT',
+            user=user,
+            detach=True,
+            auto_remove=True)
+        try:
+            logs = container.logs(stream=True)
+            for log in logs:
+                sys.stdout.write(log.decode('utf-8'))
+                sys.stdout.flush()
+        finally:
+            if container.status != 'exited':
+                try:
+                    container.remove(force=True)
+                except Exception:
+                    pass
