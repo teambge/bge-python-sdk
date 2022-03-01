@@ -1,25 +1,44 @@
 #-*- coding: utf-8 -*-
 
 from bgesdk.client import OAuth2
+from six.moves.urllib.parse import parse_qsl, urlparse
 
 import logging
-import pytest
 import os
+import pytest
+import requests
+import six
 
 
 ENDPOINT = os.environ.get('ENDPOINT')
 CLIENT_ID = os.environ.get('CLIENT_ID')
 CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
-REDIRECT_URL = os.environ.get('REDIRECT_URL')
-ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
+REDIRECT_URI = os.environ.get('REDIRECT_URI')
+AUTHORIZATION_EXTRA_QUERY = os.environ.get('AUTHORIZATION_EXTRA_QUERY')
 SELF_BIOSAMPLE_ID = os.environ.get('SELF_BIOSAMPLE_ID')
 SELF_META_BIOSAMPLE_ID = os.environ.get('SELF_META_BIOSAMPLE_ID')
 OTHER_BIOSAMPLE_ID = os.environ.get('OTHER_BIOSAMPLE_ID')
 
 
 @pytest.fixture(scope='session')
-def redirect_url():
-    return REDIRECT_URL
+def redirect_uri():
+    return REDIRECT_URI
+
+
+@pytest.fixture(scope='session')
+def authorization_url(oauth2, redirect_uri):
+    authorization_url = oauth2.get_authorization_url(redirect_uri)
+    return '&'.join((authorization_url, AUTHORIZATION_EXTRA_QUERY))
+
+
+@pytest.fixture(scope='session')
+def authorization_code(authorization_url):
+    r = requests.get(authorization_url)
+    assert r.status_code == 200
+    query = dict(parse_qsl(urlparse(r.url).query))
+    code = query.get('code')
+    assert isinstance(code, six.string_types)
+    return code
 
 
 @pytest.fixture(scope='session')
@@ -35,8 +54,12 @@ def oauth2():
 
 
 @pytest.fixture(scope='session')
-def access_token():
-    return ACCESS_TOKEN
+def access_token(oauth2, authorization_code, redirect_uri):
+    token = oauth2.exchange_authorization_code(
+        authorization_code,
+        redirect_uri
+    )
+    return token.access_token
 
 
 @pytest.fixture(scope='session')

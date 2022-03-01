@@ -8,8 +8,13 @@ from six.moves import input
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_config_parser, config_get, secure_str, get_config_path, confirm,
-    get_active_project, output
+    get_config_parser,
+    config_get,
+    secure_str,
+    get_config_path,
+    confirm,
+    get_active_project,
+    output
 )
 
 
@@ -17,6 +22,7 @@ class Command(BaseCommand):
 
     order = 1
     help = '配置、新增、显示、删除 BGE 开放平台的 OAuth2 配置，仅支持客户端模式。'
+    project_help = '全局配置项目名。'
 
     def add_arguments(self, parser):
         sub_ps = parser.add_subparsers(
@@ -30,7 +36,7 @@ class Command(BaseCommand):
         )
         add_p.add_argument(
             'project',
-            help='全局配置项目名。'
+            help=self.project_help
         )
         add_p.set_defaults(method=self.add_project, parser=add_p)
         remove_p = sub_ps.add_parser(
@@ -40,7 +46,7 @@ class Command(BaseCommand):
         )
         remove_p.add_argument(
             'project',
-            help='全局配置项目名。'
+            help=self.project_help
         )
         remove_p.set_defaults(method=self.remove_project, parser=remove_p)
         show_p = sub_ps.add_parser(
@@ -51,7 +57,7 @@ class Command(BaseCommand):
         show_p.add_argument(
             'project',
             nargs='?',
-            help='全局配置项目名。'
+            help=self.project_help
         )
         show_p.set_defaults(method=self.show_project, parser=show_p)
 
@@ -59,41 +65,7 @@ class Command(BaseCommand):
         project = get_active_project()
         output('当前正在配置 {}：\n'.format(project))
         config_path = get_config_path(project, check_exists=False)
-        config_parser = get_config_parser(config_path)
-        oauth2_section = constants.DEFAULT_OAUTH2_SECTION
-        if oauth2_section not in config_parser.sections():
-            config_parser.add_section(oauth2_section)
-        for key, conf in constants.CLIENT_CREDENTIALS_CONFIGS:
-            type_ = conf['type']
-            if 'str' == type_:
-                saved_value = config_get(
-                    config_parser.get, oauth2_section, key)
-            elif 'int' == type_:
-                saved_value = config_get(
-                    config_parser.getint, oauth2_section, key)
-            elif 'bool' == type_:
-                saved_value = config_get(
-                    config_parser.getboolean, oauth2_section, key)
-            else:
-                raise ValueError('invalid type: {}'.format(type_))
-            secure = conf.get('secure')
-            description = conf.get('description', '')
-            value = saved_value or conf.get('default', '')
-            if secure and value:
-                value = secure_str(value)
-            input_value = input(
-                '？请输入{} {} [{}]：'.format(description, key, value))
-            if input_value:
-                config_parser.set(oauth2_section, key, input_value)
-            elif saved_value is None:
-                if conf.get('default') is not None:
-                    config_parser.set(oauth2_section, key, conf.get('default'))
-                else:
-                    config_parser.set(oauth2_section, key, '')
-        with open(config_path, 'w') as config_file:
-            config_parser.write(config_file)
-        output('')
-        output('配置已保存至：{}'.format(config_path))
+        self._new_project(config_path)
 
     def add_project(self, args):
         project = args.project.lower()
@@ -102,23 +74,31 @@ class Command(BaseCommand):
         if exists(config_path):
             output('配置 {} 已存在'.format(project))
             sys.exit(1)
+        self._new_project(config_path)
+
+    def _get_config_value(self, config_parser, key, type_):
+        oauth2_section = constants.DEFAULT_OAUTH2_SECTION
+        if 'str' == type_:
+            saved_value = config_get(
+                config_parser.get, oauth2_section, key)
+        elif 'int' == type_:
+            saved_value = config_get(
+                config_parser.getint, oauth2_section, key)
+        elif 'bool' == type_:
+            saved_value = config_get(
+                config_parser.getboolean, oauth2_section, key)
+        else:
+            raise ValueError('invalid type: {}'.format(type_))
+        return saved_value
+
+    def _new_project(self, config_path):
         config_parser = get_config_parser(config_path)
         oauth2_section = constants.DEFAULT_OAUTH2_SECTION
         if oauth2_section not in config_parser.sections():
             config_parser.add_section(oauth2_section)
         for key, conf in constants.CLIENT_CREDENTIALS_CONFIGS:
             type_ = conf['type']
-            if 'str' == type_:
-                saved_value = config_get(
-                    config_parser.get, oauth2_section, key)
-            elif 'int' == type_:
-                saved_value = config_get(
-                    config_parser.getint, oauth2_section, key)
-            elif 'bool' == type_:
-                saved_value = config_get(
-                    config_parser.getboolean, oauth2_section, key)
-            else:
-                raise ValueError('invalid type: {}'.format(type_))
+            saved_value = self._get_config_value(config_parser, key, type_)
             secure = conf.get('secure')
             description = conf.get('description', '')
             value = saved_value or conf.get('default', '')
@@ -130,7 +110,8 @@ class Command(BaseCommand):
                 config_parser.set(oauth2_section, key, input_value)
             elif saved_value is None:
                 if conf.get('default') is not None:
-                    config_parser.set(oauth2_section, key, conf.get('default'))
+                    config_parser.set(
+                        oauth2_section, key, conf.get('default'))
                 else:
                     config_parser.set(oauth2_section, key, '')
         with open(config_path, 'w') as config_file:

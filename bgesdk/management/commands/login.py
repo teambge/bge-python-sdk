@@ -9,7 +9,10 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project, config_get, get_config_path, get_config_parser,
+    get_active_project,
+    config_get,
+    get_config_path,
+    get_config_parser,
     output
 )
 
