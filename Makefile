@@ -7,11 +7,9 @@ install:
 
 # 构建源码包
 build: wheel
-	$(PYTHON) setup.py build sdist
-
-# 构建 wheel 包
-wheel:
 	$(PYTHON) setup.py bdist_wheel
+	$(PYTHON) setup.py sdist --formats=gztar,zip,bztar,xztar,ztar,tar
+	$(PYTHON) setup.py bdist
 
 # 单元测试
 test:
