@@ -6,7 +6,10 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project, config_get, read_config, output
+    get_active_project,
+    config_get,
+    read_config,
+    output
 )
 from bgesdk.models import ModelEncoder
 from bgesdk.version import __version__

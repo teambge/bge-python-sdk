@@ -4,7 +4,10 @@ from posixpath import splitext
 
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_config_dir, get_config_path, get_active_path, get_active_project,
+    get_config_dir,
+    get_config_path,
+    get_active_path,
+    get_active_project,
     output
 )
 

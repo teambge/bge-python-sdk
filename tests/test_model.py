@@ -12,4 +12,5 @@ class TestModel:
         """格式错误的 taxon 编号"""
         with pytest.raises(APIError) as e:
             api.invoke_model(model_id)
-        assert e.value.code == 41401
+        # 模型不存在
+        assert e.value.code == 41202

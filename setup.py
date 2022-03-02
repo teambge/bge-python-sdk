@@ -3,7 +3,9 @@
 import sys
 
 if sys.version_info.major <= 2:
-    reload(sys)
+    from six.moves import reload_module
+
+    reload_module(sys)
     sys.setdefaultencoding("UTF-8")
 
 import setuptools

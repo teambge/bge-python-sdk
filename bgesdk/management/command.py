@@ -20,7 +20,7 @@ class BaseCommand(metaclass=ABCMeta):
         self.add_arguments(parser)
 
     def add_arguments(self, parser):
-        pass
+        """添加自定义命令参数"""
 
     @abstractmethod
     def handler(self, args):
