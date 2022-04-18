@@ -579,8 +579,6 @@ class Command(BaseCommand):
                     output('上传模型源码失败：{}'.format(e))
                     sys.exit(1)
                 output('\n上传成功')
-                tmp.close()
-                os.remove(tmp.name)
         output('模型部署中...')
         try:
             result = api.deploy_model(
