@@ -24,6 +24,9 @@ upload:
 	pip install twine; \
 	twine upload dist/*
 
+changelog:
+	npm run changelog
+
 clean:
 	rm -rf build \
 		   dist \
@@ -41,4 +44,4 @@ clean:
 		   tests/*.pyc \
 		   tests/__pycache__/
 
-.PHONY: test upload upload-test build install clean
+.PHONY: test upload upload-test build install changelog clean
