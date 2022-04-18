@@ -6,6 +6,7 @@ import platform
 import six
 import sys
 
+from datetime import datetime
 from os.path import expanduser
 from posixpath import join, exists, abspath
 from six.moves import configparser, http_client
@@ -130,7 +131,9 @@ def get_config_parser(path):
 def output(*args, sep=' ', end='\n'):
     args = map(lambda x: str(x), args)
     content = '{}'.format(sep).join(args)
-    return sys.stdout.write("{}{}".format(content, end))
+    return sys.stdout.write(
+        "[{}] {}{}".format(datetime.now(), content, end)
+    )
 
 
 def get_sys_user():
