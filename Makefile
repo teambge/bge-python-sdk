@@ -6,10 +6,9 @@ install:
 	$(PYTHON) setup.py install
 
 # 构建源码包
-build: wheel
+build:
 	$(PYTHON) setup.py bdist_wheel
-	$(PYTHON) setup.py sdist --formats=gztar,zip,bztar,xztar,ztar,tar
-	$(PYTHON) setup.py bdist
+	$(PYTHON) setup.py sdist
 
 # 单元测试
 test:
@@ -42,4 +41,4 @@ clean:
 		   tests/*.pyc \
 		   tests/__pycache__/
 
-.PHONY: test upload upload-test build wheel install clean
+.PHONY: test upload upload-test build install clean
