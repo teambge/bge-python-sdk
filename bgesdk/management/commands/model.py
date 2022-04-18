@@ -3,6 +3,7 @@ import docker
 import fnmatch
 import json
 import os
+import python_minifier
 import qprompt
 import re
 import stat
@@ -127,6 +128,8 @@ TASK_ERROR_MESSAGE = '已等待 {}s，任务状态异常：{}'
 
 WHICH_DOCKER = 'which docker'
 WHEREIS_DOCKER = 'whereis docker'
+
+ZIP_COMPRESSION = zipfile.ZIP_DEFLATED
 
 
 class Command(BaseCommand):
@@ -547,31 +550,37 @@ class Command(BaseCommand):
         if not ignore_source:
             ignore_path = join(home, BGE_IGNORE_FILE)
             if not exists(ignore_path):
-                output('未发现 .bgeignore 文件，初始化 {} ... '.format(ignore_path))
+                output(
+                    '未发现 .bgeignore 文件，初始化 {} ...'.format(ignore_path)
+                )
                 open(ignore_path, 'w').write(BGEIGNORE_TEMPLATE)
             output('开始打包模型源码...')
-            tmp = tempfile.NamedTemporaryFile(suffix='.zip', delete=False)
-            with zipfile.ZipFile(tmp.name, 'w', zipfile.ZIP_DEFLATED) as zf:
-                self._zip_codedir(home, zf)
-            tmp.flush()
-            tmp.seek(0, 2)
-            size = tmp.tell()
-            tmp.seek(0)
-            output('打包成功')
-            human_size = human_byte(size)
-            if size > 100 * 1024 * 1024:
-                output('打包后 zip 文件为 {}，最大限制 100MB'.format(human_size))
-                exit(1)
-            output('打包 zip 文件大小为：{}'.format(human_size))
-            output('开始上传模型源码...')
-            try:
-                object_name = api.upload(zip_filename, tmp)
-            except APIError as e:
-                output('上传模型源码失败：{}'.format(e))
-                sys.exit(1)
-            output('\n上传成功')
-            tmp.close()
-            os.remove(tmp.name)
+            with tempfile.NamedTemporaryFile(suffix='.zip') as tmp:
+                with zipfile.ZipFile(tmp.name, 'w', ZIP_COMPRESSION) as zf:
+                    self._zip_codedir(home, zf)
+                tmp.flush()
+                tmp.seek(0, 2)
+                size = tmp.tell()
+                tmp.seek(0)
+                human_size = human_byte(size)
+                if size > 100 * 1024 * 1024:
+                    output(
+                        '打包后 zip 文件大小为 {}，最大限制 100MB'.format(
+                            human_size
+                        )
+                    )
+                    exit(1)
+                output('打包成功：{}'.format(tmp.name))
+                output('文件大小：{}'.format(human_size))
+                output('开始上传模型源码...')
+                try:
+                    object_name = api.upload(zip_filename, tmp)
+                except APIError as e:
+                    output('上传模型源码失败：{}'.format(e))
+                    sys.exit(1)
+                output('\n上传成功')
+                tmp.close()
+                os.remove(tmp.name)
         output('模型部署中...')
         try:
             result = api.deploy_model(
@@ -638,7 +647,20 @@ class Command(BaseCommand):
                     fnmatch.filter(zip_relpaths, ignore_pattern))
         for zip_relpath in zip_relpaths:
             filepath = total_files[zip_relpath]
-            ziph.write(filepath, zip_relpath)
+            output('正在打包：{}'.format(filepath))
+            if not filepath.endswith('.py'):
+                ziph.write(filepath, zip_relpath)
+                continue
+            with open(filepath, 'r') as fp:
+                with tempfile.NamedTemporaryFile(mode='w') as temp_fp:
+                    content = python_minifier.minify(
+                        fp.read(),
+                        rename_globals=True
+                    )
+                    temp_fp.write(content)
+                    temp_fp.flush()
+                    temp_fp.seek(0)
+                    ziph.write(temp_fp.name, zip_relpath)
 
     def get_ignore_patterns(self, home):
         ignore_patterns = []
