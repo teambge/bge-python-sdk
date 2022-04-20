@@ -1,6 +1,7 @@
 import os
 
 from posixpath import splitext
+from rich.table import Table
 
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
@@ -8,7 +9,8 @@ from bgesdk.management.utils import (
     get_config_path,
     get_active_path,
     get_active_project,
-    output
+    output,
+    console
 )
 
 
@@ -39,7 +41,7 @@ class Command(BaseCommand):
         active_path = get_active_path()
         with open(active_path, 'w') as fp:
             fp.write(project)
-        output('已激活 {} 的项目配置'.format(project))
+        output('[green]已激活 {} 的项目配置'.format(project))
 
     def list_projects(self):
         active_project = get_active_project()
@@ -50,11 +52,27 @@ class Command(BaseCommand):
             if ext != '.ini':
                 continue
             projects.append(name)
-        output('通过 bge workon <NAME> 切换生效配置：\n')
         projects.sort()
+        table = Table(
+            title='通过 bge workon <NAME> 切换生效配置',
+            expand=True,
+            show_header=True,
+            header_style="magenta"
+        )
+        table.add_column(
+            "项目",
+            justify="center",
+            style="dim"
+        )
+        table.add_column("使用中", justify="center")
         if active_project in projects:
-            output(active_project, '- 已生效')
+            table.add_row(
+                active_project,
+                'Y',
+                style="green",
+            )
         for project in projects:
             if project == active_project:
                 continue
-            output(project)
+            table.add_row(project, '-')
+        console.print(table)

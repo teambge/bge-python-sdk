@@ -42,6 +42,7 @@ clean:
 		   bgesdk/management/commands/api/commands/*.pyc \
 		   bgesdk/management/commands/api/commands/__pycache__/ \
 		   tests/*.pyc \
-		   tests/__pycache__/
+		   tests/__pycache__/ \
+		   .bge/tmp/*
 
 .PHONY: test upload upload-test build install changelog clean

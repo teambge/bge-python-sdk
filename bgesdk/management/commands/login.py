@@ -1,19 +1,20 @@
 import sys
 import webbrowser
 
-from six.moves import input
-from time import sleep
+from rich.prompt import Prompt
 
 from bgesdk.client import OAuth2
 from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project,
     config_get,
-    get_config_path,
+    get_active_project,
     get_config_parser,
-    output
+    get_config_path,
+    output,
+    output_json,
+    output_syntax
 )
 
 
@@ -54,26 +55,29 @@ class Command(BaseCommand):
         output('授权页面地址为：{}'.format(authorization_url))
         output('浏览器启动中...')
         webbrowser.open(authorization_url, new=1, autoraise=False)
-        sleep(1)
-        output('\n请在浏览器登录并完成授权，复制跳转后页面链接的 code 参数并关闭浏览器。\n')
+        output('请在浏览器登录并完成授权，复制跳转后页面链接的 code 参数并关闭浏览器。\n')
         while True:
-            code = input('请输入 code：').strip()
+            code = Prompt.ask('请输入浏览器回调地址携带的参数 [cyan]code[/cyan]')
+            code = code.strip()
             if code:
                 break
+            output('[red]参数 code 不能为空[/red]')
         try:
             token_result = oauth2.exchange_authorization_code(
                 code, redirect_uri=redirect_uri
             )
         except APIError as e:
-            output('令牌获取出错: {}'.format(e))
+            output('[red]令牌获取出错：[/red]')
+            output_json(e.result)
             sys.exit(1)
         self._write_token_config(project, token_result)
-        output('令牌内容如下：')
-        output('')
+        output('[green]令牌内容如下[/green]')
+        content = []
         for key in [
                 'access_token', 'token_type', 'expires_in', 'scope',
                 'refresh_token']:
-            output('{} = {}'.format(key, token_result[key]))
+            content.append('{} = {}'.format(key, token_result[key]))
+        output_syntax('\n'.join(content), lexer='INI')
 
     def _write_token_config(self, project, token_result):
         access_token = token_result['access_token']
@@ -93,4 +97,4 @@ class Command(BaseCommand):
         config_parser.set(section_name, 'refresh_token', refresh_token)
         with open(config_path, 'w') as config_file:
             config_parser.write(config_file)
-        output('令牌已保存至：{}'.format(config_path))
+        output('[green]令牌已保存至：[/green]{}'.format(config_path))

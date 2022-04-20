@@ -10,19 +10,20 @@ from bgesdk.client import API
 from bgesdk.error import APIError
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.constants import (
+    API_TABLE,
+    DEFAULT_MODEL_TIMEOUT,
+    DEFAULT_OAUTH2_SECTION,
+    DEFAULT_TOKEN_SECTION,
     TAB_CHOICES,
     TITLE_NAME,
-    API_TABLE,
-    DEFAULT_TOKEN_SECTION,
-    DEFAULT_OAUTH2_SECTION,
-    DEFAULT_MODEL_TIMEOUT
 )
 from bgesdk.management.utils import (
     config_get,
     get_active_project,
-    read_config,
     get_home,
     output,
+    output_json,
+    read_config,
     SYS_STR
 )
 from bgesdk.management.validate import validator_doc
@@ -103,23 +104,27 @@ class Command(BaseCommand):
             home = get_home()
         docs_dir = join(home, name)
         if exists(docs_dir):
-            output('错误！{} 已存在 '.format(docs_dir))
+            output('[red]错误！{} 已存在[/red] '.format(docs_dir))
             sys.exit(1)
         if not exists(home):
-            output('错误！无法找到 home 目录 {}。'.format(home))
+            output('[red]错误！无法找到 home 目录 {}。[/red]'.format(home))
             sys.exit(1)
         with os.popen('docsify init {}'.format(docs_dir)) as f:
             content = f.read()
         if content:
-            output('docsify 项目已初始化，路径为：{}'.format(docs_dir))
-            output('请跳转至项目目录下。')
+            output(
+                '[green]docsify 项目已初始化，路径为：[/green]{}'.format(docs_dir)
+            )
+            output('[green]请跳转至项目目录下。[/green]')
 
     def get_docs_dir(self, home=None):
         if home is None:
             home = get_home()
         doc_path = join(home, 'index.html')
         if not exists(doc_path):
-            output('请确认当前目录或者所输入的项目路径是否为 docsify 项目的根目录。')
+            output(
+                '[red]请确认当前目录或者输入的项目路径是否为 docsify 项目根目录。[/red]'
+            )
             sys.exit(1)
         return home
 
@@ -128,17 +133,17 @@ class Command(BaseCommand):
         with os.popen(command) as f:
             content = f.read()
         if not content:
-            output('请先安装 docsify，参考 https://docsify.js.org/#/quickstart')
+            output('[red]请先安装 docsify，参考 https://docsify.js.org/[/red]')
             sys.exit(1)
         path = args.path
         if not exists(path):
-            output('文件路径：{} 有误，请检查。'.format(path))
+            output('[red]文件路径：{} 有误，请检查。[/red]'.format(path))
             sys.exit(1)
         docs_dir = self.get_docs_dir(home=args.home)
         doc_data = json.load(open(path))
         result = validator_doc(doc_data)
         if result['valid'] is False:
-            output('文件内容有误，错误内容：{}'.format(result['errors']))
+            output('[red]文件内容有误，错误内容：[/red]{}'.format(result['errors']))
             sys.exit(1)
         doc_tab = doc_data['doc_tab']
         model_id = doc_data['model_id']
@@ -151,8 +156,7 @@ class Command(BaseCommand):
             language = content['language']
             doc_name = content['doc_name']
             if language == 'en':
-                file_dir = join(
-                    docs_dir, 'en', 'model_center')
+                file_dir = join(docs_dir, 'en', 'model_center')
                 req_path = 'en/model_center/{}.md'.format(model_id)
             if not exists(file_dir):
                 os.makedirs(file_dir)
@@ -161,7 +165,6 @@ class Command(BaseCommand):
             sidebar = '        * [{}]({})'.format(doc_name, req_path)
             sidebar_lines.append(sidebar)
             self._make_doc(content, file_path, model_id)
-
         self._write_to_sidebar(doc_tab, sidebar_path, sidebar_lines)
         self._write_index(docs_dir)
         os.system('docsify serve {} --port 3000'.format(docs_dir))
@@ -173,10 +176,16 @@ class Command(BaseCommand):
         developer = 'Developer: {}'.format(content.get('developer', ''))
         content_title = '# {}'.format(content.get('content_title', ''))
         ctime = 'Ctime: {}'.format(
-            datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S'))
+            datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+        )
         version_line = 'Version:'
-        join_lines = [content_title, ctime, developer, version_line,
-                      divid_line]
+        join_lines = [
+            content_title,
+            ctime,
+            developer,
+            version_line,
+            divid_line
+        ]
         for key, value in TITLE_NAME.items():
             title_line = '#### {}'.format(value)
             join_model_id = None
@@ -192,9 +201,7 @@ class Command(BaseCommand):
             join_lines.append(science_detail_title)
         api_title = TITLE_MESSAGE.format('API调用')
         join_lines.append(api_title)
-
         for key, value in API_TABLE.items():
-
             params_line = '![{}](https://img.shields.io/badge/' \
                           '{}-{}-blue)'.format(key, value, key)
             params = dict()
@@ -205,7 +212,6 @@ class Command(BaseCommand):
             params_table = self._join_table(params)
             join_lines.append(params_line)
             join_lines.append(params_table)
-
         example_result_line = '![Success](https://img.shields.io/badge/' \
                               '输出-Success-green)'
         json_str = '```json'
@@ -218,7 +224,6 @@ class Command(BaseCommand):
         join_lines.append(example_result_json)
         join_lines.append(last_json_str)
         join_lines.append(divid_line)
-
         ref_line = TITLE_MESSAGE.format('参考文献')
         join_lines.append(ref_line)
         refs = content.get('ref', [])
@@ -234,7 +239,6 @@ class Command(BaseCommand):
             elif isinstance(line, str):
                 lines.append(line + line_feed)
             lines.append(line_feed)
-
         with open(file_path, 'w') as f:
             f.writelines(lines)
 
@@ -257,8 +261,8 @@ class Command(BaseCommand):
                             data = params[index]
                         except:
                             output(
-                                'arguments中的关键词数组应大于'
-                                '等于templates中的关键词数组')
+                                '[red]arguments中的关键词数组应大于'
+                                '等于templates中的关键词数组[/red]')
                             sys.exit(1)
                         image_md = '''{}<br><center><img src="{}" 
                         width="386" height="386" /><div style="color: #999;
@@ -297,7 +301,7 @@ class Command(BaseCommand):
     def _write_index(self, docs_dir):
         index_path = join(docs_dir, 'index.html')
         if exists(index_path) is False:
-            output('docs 目录下无 index.html')
+            output('[red]docs 目录下无 index.html[/red]')
             sys.exit(1)
         lines = []
         with open(index_path, 'r') as f:
@@ -329,7 +333,7 @@ class Command(BaseCommand):
         input_value = input('？请输入需要发布的 json 文件路径：')
         if input_value:
             if not exists(input_value):
-                output('文件路径：{} 有误，请检查。'.format(input_value))
+                output('[red]文件路径：{} 有误，请检查。[/red]'.format(input_value))
                 sys.exit(1)
             doc_data = json.load(open(input_value))
             doc_tab = doc_data['doc_tab']
@@ -338,12 +342,12 @@ class Command(BaseCommand):
             try:
                 result = api.upload_model_doc(doc_tab, model_id, doc_content)
             except APIError as e:
-                output('模型文档上传失败：{}'.format(e))
+                output('[red]模型文档上传失败：[/red]')
+                output_json(e.result)
                 sys.exit(1)
             output('模型文档上传结果：')
-            output(json.dumps(result.json(), indent=4, ensure_ascii=False))
-
+            output_json(result)
         else:
-            output('请输入需要预览的文档路径')
+            output('[red]请输入需要预览的文档路径[/red]')
             sys.exit(1)
 

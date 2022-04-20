@@ -3,18 +3,19 @@ import os
 import sys
 
 from posixpath import exists
-from six.moves import input
+from rich.prompt import Prompt
 
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_config_parser,
     config_get,
-    secure_str,
-    get_config_path,
     confirm,
     get_active_project,
-    output
+    get_config_parser,
+    get_config_path,
+    output,
+    output_file,
+    secure_str,
 )
 
 
@@ -69,10 +70,9 @@ class Command(BaseCommand):
 
     def add_project(self, args):
         project = args.project.lower()
-        output('正在添加配置 {}：\n'.format(project))
         config_path = get_config_path(project, check_exists=False)
         if exists(config_path):
-            output('配置 {} 已存在'.format(project))
+            output('[red]配置 {} 已存在'.format(project))
             sys.exit(1)
         self._new_project(config_path)
 
@@ -102,10 +102,16 @@ class Command(BaseCommand):
             secure = conf.get('secure')
             description = conf.get('description', '')
             value = saved_value or conf.get('default', '')
+            show_value = value
             if secure and value:
-                value = secure_str(value)
-            input_value = input(
-                '？请输入{} {} [{}]：'.format(description, key, value))
+                show_value = secure_str(value)
+            input_value = Prompt.ask(
+                '请输入{} {} ([bold cyan]{}[/bold cyan])'.format(
+                    description, key, show_value
+                ),
+                show_default=False,
+                default=value
+            )
             if input_value:
                 config_parser.set(oauth2_section, key, input_value)
             elif saved_value is None:
@@ -117,13 +123,15 @@ class Command(BaseCommand):
         with open(config_path, 'w') as config_file:
             config_parser.write(config_file)
         output('')
-        output('配置已保存至：{}'.format(config_path))
+        output('[green]配置已保存至：[/green]{}'.format(config_path))
 
     def remove_project(self, args):
         project = args.project.lower()
         activate_project = get_active_project()
         if activate_project == project:
-            output('无法删除正在使用的配置，删除前请先使用 bge workon project 切换')
+            output(
+                '[red]无法删除正在使用的配置，请先使用 bge workon 切换至其他项目[/red]'
+            )
             sys.exit(1)
         config_path = get_config_path(project)
         if not confirm(prompt='确认删除配置项目 {}？'.format(project)):
@@ -133,7 +141,7 @@ class Command(BaseCommand):
             os.unlink(config_path)
         except (IOError, OSError):
             pass
-        output('成功删除配置项目 {}'.format(project))
+        output('[green]成功删除配置项目[/green] {}'.format(project))
 
     def show_project(self, args):
         project = args.project
@@ -141,8 +149,5 @@ class Command(BaseCommand):
             project = get_active_project()
         project = project.lower()
         config_path = get_config_path(project)
-        output('配置文件：{}'.format(config_path))
-        output('配置详情：')
-        output('')
-        with open(config_path, 'r') as config_file:
-            output(config_file.read())
+        title = 'BGE 开放平台 Python SDK 配置文件'
+        output_file(config_path, title=title, subtitle=config_path)

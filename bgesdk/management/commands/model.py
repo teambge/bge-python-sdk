@@ -6,6 +6,7 @@ import os
 import python_minifier
 import qprompt
 import re
+import shutil
 import stat
 import sys
 import tempfile
@@ -13,7 +14,9 @@ import zipfile
 
 from datetime import datetime
 from posixpath import join, exists, isdir, relpath
-from six.moves import input
+from rich.live import Live
+from rich.prompt import Prompt
+from rich.table import Table
 from time import sleep
 from uuid import uuid4
 
@@ -22,19 +25,21 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project,
     config_get,
-    get_home,
-    read_config,
-    generate_container_name,
-    get_config_parser,
     confirm,
-    output,
+    console,
+    get_active_project,
+    get_config_parser,
+    get_home,
     get_sys_user,
+    generate_container_name,
+    output,
+    output_json,
+    output_syntax,
+    read_config,
     SYS_STR
 )
 from bgesdk.utils import human_byte
-from bgesdk.version import __version__
 
 
 DEFAULT_OAUTH2_SECTION = constants.DEFAULT_OAUTH2_SECTION
@@ -90,6 +95,30 @@ BGEIGNORE_TEMPLATE = '''\
 # Ignore folder .bge/
 
 .bge/*
+lib/*.pyc
+
+'''
+
+BGEMINIFY_TEMPLATE = '''\
+# Unix filename patterns
+#
+#   *    matches everything
+#   ?    matches any single character
+#   seq  matches any character in seq
+#   !seq matches any character not in seq
+
+# Warning: it only can minfiy .py files.
+
+# Minify all files in lib/
+# lib/*
+
+# Unminify all python files in lib/
+# !lib/*.py
+
+# Minify main.py and unminify lib/*
+
+!lib/*
+main.py
 
 '''
 
@@ -100,25 +129,22 @@ RUNTIMES = {
 WORKDIR = '/code'
 
 RUNTIME_CHOICES = ['python3', 'python2.7']
-MEMORY_SIZE_CHOICES = [
-    128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832,
-    896, 960, 1024, 1088, 1152, 1216, 1280, 1344, 1408, 1472, 1536,
-    1600, 1664, 1728, 1792, 1856, 1920, 1984, 2048
-]
+MEMORY_SIZE_CHOICES = list(range(128, 2049, 64))
 MIN_TIMEOUT = 1
 MAX_TIMEOUT = 900
 
 TOTAL_PROGRESS = {
-    'FAILURE': '任务执行失败',
-    'PENDING': '任务等待中',
+    'FAILURE' : '任务执行失败',
+    'PENDING' : '任务等待中',
     'RECEIVED': '任务已接收',
-    'RETRY': '任务将被重试',
-    'REVOKED': '任务取消',
-    'STARTED': '任务已开始',
-    'SUCCESS': '任务执行成功'
+    'RETRY'   : '任务将被重试',
+    'REVOKED' : '任务取消',
+    'STARTED' : '任务已开始',
+    'SUCCESS' : '任务执行成功'
 }
 
 BGE_IGNORE_FILE = '.bgeignore'
+BGE_MINIFY_FILE = '.bgeminify'
 
 CREATE_MESSAGE = '创建 {} ... '
 INSTALL_DOCKER_MESSAGE = '\
@@ -324,6 +350,14 @@ class Command(BaseCommand):
         )
         versions_p.set_defaults(method=self.model_versions, parser=versions_p)
 
+        # 清空临时文件
+        clear_p = model_subparsers.add_parser(
+            'clear',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+            help='清空部署模型时生成的打包临时文件'
+        )
+        clear_p.set_defaults(method=self.clear_model, parser=clear_p)
+
     def handler(self, args):
         """打印 subparser 帮助信息"""
         parser = args.parser
@@ -336,35 +370,39 @@ class Command(BaseCommand):
             home = get_home()
         scaffold_dir = join(home, scaffold_name)
         if exists(scaffold_dir):
-            output('错误！{} 已存在 '.format(scaffold_dir))
+            output('[red]错误！{} 已存在[/red]'.format(scaffold_dir))
             sys.exit(1)
         if not exists(home):
-            output('错误！无法找到 home 目录 {}。'.format(home))
+            output('[red]错误！无法找到 home 目录 {}。[/red]'.format(home))
             sys.exit(1)
         model_id, runtime, memory_size, timeout = self._config_model()
         os.makedirs(scaffold_dir)
         bge_dir = join(scaffold_dir, '.bge')
         lib_dir = join(scaffold_dir, 'lib')
         for dir_ in [scaffold_dir, bge_dir, lib_dir]:
-            sys.stdout.write(CREATE_MESSAGE.format(dir_))
-            sys.stdout.flush()
+            output(CREATE_MESSAGE.format(dir_))
             if not exists(dir_):
                 os.makedirs(dir_)
-                output('完成')
+                output('[green]完成[/green]')
             elif not isdir(dir_):
-                output('失败')
-                output('失败！{} 存在但不是目录。'.format(dir_))
+                output('[red]失败！{} 存在但不是目录。[/red]'.format(dir_))
                 sys.exit(1)
             else:
-                output('已存在')
+                output('[red]已存在[/red]')
         model_config_path = join(scaffold_dir, 'model.ini')
         output(CREATE_MESSAGE.format(model_config_path))
         if not exists(model_config_path):
             open(model_config_path, 'w').write(MODEL_CONFIG_TEMPLATE)
+        # 模型源码打包忽略规则文件
         ignore_path = join(scaffold_dir, BGE_IGNORE_FILE)
         output(CREATE_MESSAGE.format(ignore_path))
         if not exists(ignore_path):
             open(ignore_path, 'w').write(BGEIGNORE_TEMPLATE)
+        # 模型源码打包混淆规则文件
+        minify_path = join(scaffold_dir, BGE_MINIFY_FILE)
+        output(CREATE_MESSAGE.format(minify_path))
+        if not exists(minify_path):
+            open(minify_path, 'w').write(BGEMINIFY_TEMPLATE)
         script_name = 'main.py'
         script_path = join(scaffold_dir, script_name)
         with open(script_path, 'wb') as file_out:
@@ -376,14 +414,15 @@ class Command(BaseCommand):
         if confirm('是否安装 bge-python-sdk？'):
             os.chdir(scaffold_dir)
             self._install_sdk()
-        output('成功创建模型项目脚手架')
+        output('[green]成功创建模型项目脚手架[/green]')
 
     def config_model(self, args):
         if args.show:
             return self._read_model_project(args)
         config_path = self.get_model_config_path()
         config_parser = get_config_parser(config_path)
-        model_id, runtime, memory_size, timeout = self._config_model(config_parser)
+        model_id, runtime, memory_size, timeout \
+            = self._config_model(config_parser)
         self._save_model_config(model_id, runtime, memory_size, timeout)
 
     def _config_model(self, config=None):
@@ -400,38 +439,41 @@ class Command(BaseCommand):
                 config.getint, section_name, 'memory_size')
             default_timeout = config_get(
                 config.getint, section_name, 'timeout')
-        # model_id
         model_id = self._input_model_id(default=default_model_id)
-        # runtime
         try:
             index = RUNTIME_CHOICES.index(default_runtime)
         except IndexError:
             index = 0
-        prompt = '？请选择运行环境 [{}]'.format(default_runtime)
+        prompt = '请选择运行环境 [{}]'.format(default_runtime)
         input_prompt = "请选择"
-        runtime = qprompt.enum_menu(RUNTIME_CHOICES).show(header=prompt,
-                                                          dft=index + 1,
-                                                          returns="desc",
-                                                          msg=input_prompt)
-        # memory_size
+        runtime = qprompt.enum_menu(RUNTIME_CHOICES).show(
+            header=prompt,
+            dft=index + 1,
+            returns="desc",
+            msg=input_prompt
+        )
         try:
             index = MEMORY_SIZE_CHOICES.index(default_memory_size)
         except IndexError:
             index = 0
-        prompt = '？请选择内存占用（MB） [{}]'.format(default_memory_size)
+        prompt = '请选择内存占用（MB） [{}]'.format(default_memory_size)
         input_prompt = "请选择"
-        memory_size = qprompt.enum_menu(MEMORY_SIZE_CHOICES).show(header=prompt,
-                                                                  dft=index + 1,
-                                                                  returns="desc",
-                                                                  msg=input_prompt)
-        # timeout
+        memory_size = qprompt.enum_menu(MEMORY_SIZE_CHOICES).show(
+            header=prompt,
+            dft=index + 1,
+            returns="desc",
+            msg=input_prompt
+        )
         prompt = '请输入模型运行超时时间，类型为整数'
         while True:
             timeout = qprompt.ask_int(msg=prompt, dft=default_timeout)
             if (MIN_TIMEOUT and timeout < MIN_TIMEOUT) \
                     or (MAX_TIMEOUT and timeout > MAX_TIMEOUT):
-                output('超出范围 [{},{}]，请重新输入'.format(
-                    MIN_TIMEOUT or '', MAX_TIMEOUT or ''))
+                output(
+                    '超出范围 [{},{}]，请重新输入'.format(
+                        MIN_TIMEOUT or '', MAX_TIMEOUT or ''
+                    )
+                )
                 continue
             break
         if not timeout:
@@ -439,18 +481,18 @@ class Command(BaseCommand):
         return model_id, runtime, memory_size, timeout
 
     def _input_model_id(self, default=''):
-        prompt = '？请输入解读模型编号 [{}]：'.format(default)
+        prompt = '[?] 请输入解读模型编号'
         while True:
-            model_id = input(prompt)
+            model_id = Prompt.ask(prompt, default=default)
             if not model_id:
                 if default:
                     model_id = default
                     break
-                output('模型编号未设置...')
+                output('[red]必须提供模型编号[/red]')
             else:
                 if model_id_match(model_id):
                     break
-                output('模型编号只能包含数字、大小写字母')
+                output('[red]模型编号只能包含数字、大小写字母[/red]')
         return model_id
 
     def _save_model_config(self, model_id, runtime, memory_size, timeout, home=None):
@@ -469,25 +511,33 @@ class Command(BaseCommand):
         with open(config_path, 'w') as config_file:
             config.write(config_file)
         output('')
-        output('解读模型配置已保存至：{}'.format(config_path))
+        output('[green]解读模型配置已保存至[/green] {}'.format(config_path))
 
     def _install_sdk(self):
-        config_path = self.get_model_config_path()
-        config = get_config_parser(config_path)
-        section_name = DEFAULT_MODEL_SECTION
-        model_id = config_get(config.get, section_name, 'model_id')
-        runtime = config_get(config.get, section_name, 'runtime')
-        client = self._get_docker_client()
-        command = ('pip install --no-deps bge-python-sdk pimento '
-                   'requests_toolbelt -t /code/lib')
-        image_name = RUNTIMES[runtime]
-        self._get_or_pull_image(client, image_name)
-        output('开始安装模型依赖包...')
-        command = ('sh -c "{}"').format(command)
-        container_name = generate_container_name(model_id)
-        self._force_remove_container(client, container_name)
-        self._run_by_container(client, image_name, command, container_name)
-        output('安装完成')
+        with console.status("正在安装 bge-python-sdk", spinner="earth"):
+            config_path = self.get_model_config_path()
+            config = get_config_parser(config_path)
+            section_name = DEFAULT_MODEL_SECTION
+            model_id = config_get(config.get, section_name, 'model_id')
+            runtime = config_get(config.get, section_name, 'runtime')
+            client = self._get_docker_client()
+            command = (
+                'pip install --cache-dir /tmp/.cache/ --no-deps '
+                'bge-python-sdk pimento requests_toolbelt -t /code/lib'
+            )
+            image_name = RUNTIMES[runtime]
+            self._get_or_pull_image(client, image_name)
+            output('开始安装模型依赖包...')
+            command = ('sh -c "{}"').format(command)
+            container_name = generate_container_name(model_id)
+            self._force_remove_container(client, container_name)
+            self._run_by_container(
+                client,
+                image_name,
+                command,
+                container_name
+            )
+            output('[green]安装完成[/green]')
 
     def upload_model_expfs(self, args):
         home = get_home()
@@ -506,7 +556,8 @@ class Command(BaseCommand):
         try:
             result = api.upload_model_expfs(model_id, 'uploadtest.zip')
         except APIError as e:
-            output('上传模型扩展集失败：{}'.format(e))
+            output('[red]上传模型扩展集失败：[/red]')
+            output_json(e.result)
             sys.exit(1)
         task_id = result.task_id
         output('上传模型扩展集任务：{}'.format(task_id))
@@ -516,11 +567,11 @@ class Command(BaseCommand):
         output('上传模型扩展集任务返回结果：')
         progress = self._wait_model_task(api, task_id, task_path)
         if 'SUCCESS' == progress:
-            output('模型 {} 上传模型扩展集成功。'.format(model_id))
+            output('[green]模型 {} 上传模型扩展集成功。'.format(model_id))
         elif 'FAILURE' == progress:
-            output('模型 {} 上传模型扩展集失败。'.format(model_id))
+            output('[red]模型 {} 上传模型扩展集失败。'.format(model_id))
         elif 'REVOKED' == progress:
-            output('模型 {} 上传模型扩展集任务已被撤销。'.format(model_id))
+            output('[white]模型 {} 上传模型扩展集任务已被撤销。'.format(model_id))
 
     def deploy_model(self, args):
         """部署模型"""
@@ -554,8 +605,21 @@ class Command(BaseCommand):
                     '未发现 .bgeignore 文件，初始化 {} ...'.format(ignore_path)
                 )
                 open(ignore_path, 'w').write(BGEIGNORE_TEMPLATE)
+            minify_path = join(home, BGE_MINIFY_FILE)
+            if not exists(minify_path):
+                output(
+                    '未发现 .bgeminify 文件，初始化 {} ...'.format(minify_path)
+                )
+                open(minify_path, 'w').write(BGEMINIFY_TEMPLATE)
             output('开始打包模型源码...')
-            with tempfile.NamedTemporaryFile(suffix='.zip') as tmp:
+            zip_tmpdir = join(home, '.bge', 'tmp')
+            if not exists(zip_tmpdir):
+                os.makedirs(zip_tmpdir)
+            with tempfile.NamedTemporaryFile(
+                    suffix='.zip',
+                    prefix='model-',
+                    dir=zip_tmpdir,
+                    delete=False) as tmp:
                 with zipfile.ZipFile(tmp.name, 'w', ZIP_COMPRESSION) as zf:
                     self._zip_codedir(home, zf)
                 tmp.flush()
@@ -576,16 +640,18 @@ class Command(BaseCommand):
                 try:
                     object_name = api.upload(zip_filename, tmp)
                 except APIError as e:
-                    output('上传模型源码失败：{}'.format(e))
+                    output('[red]上传模型源码失败：[/red]')
+                    output_json(e.result)
                     sys.exit(1)
-                output('\n上传成功')
-        output('模型部署中...')
-        try:
-            result = api.deploy_model(
-                model_id, object_name=object_name, **params)
-        except APIError as e:
-            output('模型部署失败：{}'.format(e))
-            sys.exit(1)
+                output('[green]上传成功[green]')
+        with console.status('模型部署中...', spinner='earth'):
+            try:
+                result = api.deploy_model(
+                    model_id, object_name=object_name, **params)
+            except APIError as e:
+                output('[red]部署模型失败：[/red]')
+                output_json(e.result)
+                sys.exit(1)
         task_id = result.task_id
         output('模型部署任务：{}'.format(task_id))
         task_path = join(home, '.bge', 'task_id')
@@ -594,11 +660,11 @@ class Command(BaseCommand):
         output('模型部署任务返回结果：')
         progress = self._wait_model_task(api, task_id, task_path)
         if 'SUCCESS' == progress:
-            output('模型 {} 灰度部署成功。'.format(model_id))
+            output('[green]模型 {} 灰度部署成功。'.format(model_id))
         elif 'FAILURE' == progress:
-            output('模型 {} 灰度部署失败。任务结果：{}'.format(model_id, result))
+            output('[red]模型 {} 灰度部署失败。任务结果：{}'.format(model_id, result))
         elif 'REVOKED' == progress:
-            output('模型 {} 灰度部署任务已被撤销。'.format(model_id))
+            output('[white]模型 {} 灰度部署任务已被撤销。'.format(model_id))
 
     def _wait_model_task(self, api, task_id, task_path):
         seconds = 0
@@ -627,7 +693,7 @@ class Command(BaseCommand):
         home = home.rstrip('/')
         total_files = {}
         zip_relpaths = set()
-        for root, dirs, files in os.walk(home):
+        for root, _, files in os.walk(home):
             for file in files:
                 filepath = join(root, file)
                 zip_relpath = relpath(filepath, home)
@@ -640,39 +706,66 @@ class Command(BaseCommand):
                 ignore_pattern = ignore_pattern[1:]
                 zip_relpaths.update(
                     fnmatch.filter(src_zip_relpaths, ignore_pattern))
-            else:
-                zip_relpaths -= set(
-                    fnmatch.filter(zip_relpaths, ignore_pattern))
-        for zip_relpath in zip_relpaths:
-            filepath = total_files[zip_relpath]
-            output('正在打包：{}'.format(filepath))
-            if not filepath.endswith('.py'):
-                ziph.write(filepath, zip_relpath)
                 continue
-            with open(filepath, 'r') as fp:
+            zip_relpaths -= set(
+                fnmatch.filter(zip_relpaths, ignore_pattern))
+        minify_relpaths = set()
+        minify_patterns = self.get_minify_patterns(home)
+        for minify_pattern in minify_patterns:
+            if minify_pattern.startswith('!'):
+                minify_pattern = minify_pattern[1:]
+                minify_relpaths -= set(
+                    fnmatch.filter(minify_relpaths, minify_pattern))
+                continue
+            minify_relpaths.update(
+                fnmatch.filter(src_zip_relpaths, minify_pattern))
+        # 仅支持混淆 .py 文件
+        minify_relpaths = fnmatch.filter(minify_relpaths, '*.py')
+        with console.status('正在打包模型源码...', spinner='dots'):
+            for zip_relpath in sorted(zip_relpaths):
+                filepath = total_files[zip_relpath]
+                if zip_relpath in minify_relpaths:
+                    continue
+                ziph.write(filepath, zip_relpath)
+                output('\t{}'.format(zip_relpath))
+            for zip_relpath in sorted(minify_relpaths):
+                with open(filepath, 'r') as fp:
+                    content = fp.read()
                 with tempfile.NamedTemporaryFile(mode='w') as temp_fp:
-                    content = python_minifier.minify(
-                        fp.read(),
-                        rename_globals=True
-                    )
+                    content = python_minifier.minify(content)
                     temp_fp.write(content)
                     temp_fp.flush()
                     temp_fp.seek(0)
                     ziph.write(temp_fp.name, zip_relpath)
+                output('\t{} [green]MINIFIED[/green]'.format(zip_relpath))
 
     def get_ignore_patterns(self, home):
-        ignore_patterns = []
+        patterns = []
         home = home.rstrip('/')
-        ignore_path = join(home, BGE_IGNORE_FILE)
-        with open(ignore_path) as fp:
+        path = join(home, BGE_IGNORE_FILE)
+        with open(path) as fp:
             for _ in fp.readlines():
                 _ = _.strip()
                 while _.startswith('/'):
                     _ = _[1:]
                 if _.startswith('#') or not _:
                     continue
-                ignore_patterns.append(_)
-        return ignore_patterns
+                patterns.append(_)
+        return patterns
+
+    def get_minify_patterns(self, home):
+        patterns = []
+        home = home.rstrip('/')
+        path = join(home, BGE_MINIFY_FILE)
+        with open(path) as fp:
+            for _ in fp.readlines():
+                _ = _.strip()
+                while _.startswith('/'):
+                    _ = _[1:]
+                if _.startswith('#') or not _:
+                    continue
+                patterns.append(_)
+        return patterns
 
     def publish_model(self, args):
         """发布模型到稳定版"""
@@ -692,9 +785,10 @@ class Command(BaseCommand):
         try:
             result = api.publish_model(model_id, message)
         except APIError as e:
-            output('模型发布失败：{}'.format(e))
+            output('[red]模型发布失败：[/red]')
+            output_json(e.result)
             sys.exit(1)
-        output('模型 {} 稳定版已成功发布。\n版本号：{}。'.format(
+        output('[green]模型 {} 稳定版已成功发布。\n版本号：{}。[/green]'.format(
             model_id, result['version']))
 
     def rollback_model(self, args):
@@ -715,7 +809,8 @@ class Command(BaseCommand):
         try:
             result = api.rollback_model(model_id, version)
         except APIError as e:
-            output('模型回滚失败：{}'.format(e))
+            output('[red]模型回滚失败：[/red]')
+            output_json(e.result)
             sys.exit(1)
         task_id = result.task_id
         output('模型回滚任务：{}'.format(task_id))
@@ -724,12 +819,19 @@ class Command(BaseCommand):
             f.write(task_id)
         progress = self._wait_model_task(api, task_id, task_path)
         if 'SUCCESS' == progress:
-            output('模型 {} 灰度版已成功回滚至版本 {}。'.format(model_id, version))
+            output('[green]模型 {} 灰度版已成功回滚至版本 {}。[/green]'.format(
+                model_id, version
+            ))
         elif 'FAILURE' == progress:
-            output('模型 {} 灰度回滚至版本 {} 失败。任务结果：{}'.format(
-                model_id, version, result))
+            output('[red]模型 {} 灰度回滚至版本 {} 失败。任务结果：{}[/red]'.format(
+                model_id, version, result
+            ))
         elif 'REVOKED' == progress:
-            output('模型 {} 灰度回滚至版本 {} 任务已被撤销失败。'.format(model_id, version))
+            output(
+                '[white]模型 {} 灰度回滚至版本 {} 任务已被撤销失败。[/white]'.format(
+                    model_id, version
+                )
+            )
 
     def model_versions(self, args):
         limit = args.limit
@@ -750,7 +852,8 @@ class Command(BaseCommand):
             result = api.model_versions(
                 model_id, limit=limit, next_page=next_page)
         except APIError as e:
-            output('获取模型版本列表失败：{}'.format(e))
+            output('[red]获取模型版本列表失败：[/red]')
+            output_json(e.result)
             sys.exit(1)
         output('第 {} 页，模型 {} 已发布版本：'.format(next_page or 1, model_id))
         output('...')
@@ -810,10 +913,11 @@ class Command(BaseCommand):
             else:
                 result = api.invoke_model(model_id, **params)
         except APIError as e:
-            output('模型运行失败：{}'.format(e))
+            output('[red]模型运行失败：[/red]')
+            output_json(e.result)
             sys.exit(1)
-        output('模型返回值：')
-        output(json.dumps(result.json(), indent=4, ensure_ascii=False))
+        output('[green]模型返回值：[/green]')
+        output_json(result.json())
 
     def get_model_config_path(self, home=None):
         if home is None:
@@ -821,7 +925,7 @@ class Command(BaseCommand):
         config_dir = join(home, '.bge')
         model_config_path = join(home, 'model.ini')
         if not exists(model_config_path) or not exists(config_dir):
-            output('请确认当前目录是否为 BGE 开放平台解读模型脚手架项目的根目录。')
+            output('[red]请确认当前是否为模型项目根目录。[/red]')
             sys.exit(1)
         return model_config_path
 
@@ -845,7 +949,7 @@ class Command(BaseCommand):
         model_id = config_get(config.get, section_name, 'model_id')
         runtime = config_get(config.get, section_name, 'runtime')
         client = self._get_docker_client()
-        command = ['pip install']
+        command = ['pip install', '--cache-dir', '/tmp/.cache/']
         if upgrade:
             command.append('--upgrade')
         if force_reinstall:
@@ -859,12 +963,12 @@ class Command(BaseCommand):
         command = ' '.join(command)
         image_name = RUNTIMES[runtime]
         self._get_or_pull_image(client, image_name)
-        output('开始安装模型依赖包...')
-        command = ('sh -c "{}"').format(command)
-        container_name = generate_container_name(model_id)
-        self._force_remove_container(client, container_name)
-        self._run_by_container(client, image_name, command, container_name)
-        output('安装完成')
+        with console.status('开始安装模型依赖包...', spinner='earth'):
+            command = ('sh -c "{}"').format(command)
+            container_name = generate_container_name(model_id)
+            self._force_remove_container(client, container_name)
+            self._run_by_container(client, image_name, command, container_name)
+            output('[green]安装完成[/green]')
 
     def start_model(self, args):
         output('Model debug server is starting ...')
@@ -898,14 +1002,23 @@ class Command(BaseCommand):
         try:
             logs = container.logs(stream=True, follow=True)
             for log in logs:
-                sys.stdout.write(log.decode('utf-8'))
-                sys.stdout.flush()
+                output(log.strip().decode('utf-8'))
         finally:
             if container.status != 'exited':
                 try:
                     container.remove(force=True)
                 except Exception:
                     pass
+
+    def clear_model(self, args):
+        home = get_home()
+        zip_tmpdir = join(home, '.bge', 'tmp')
+        if confirm('是否清空目录 {} 下打包模型生成的临时文件？'.format(zip_tmpdir)):
+            shutil.rmtree(zip_tmpdir, ignore_errors=True)
+            os.mkdir(zip_tmpdir)
+            output('[green]成功删除[/green]')
+        else:
+            output('[white]已取消[/white]')
 
     def _get_docker_client(self):
         command = WHEREIS_DOCKER if SYS_STR == 'windows' else WHICH_DOCKER
@@ -917,8 +1030,8 @@ class Command(BaseCommand):
         try:
             client = docker.from_env()
         except docker.errors.DockerException:
-            output('请确认 docker 服务是否已开启。')
-            output('启动命令：/etc/init.d/docker start')
+            output('[red]请确认 docker 服务是否已开启。[/red]')
+            output('[red]启动命令：/etc/init.d/docker start[/red]')
             sys.exit(1)
         return client
 
@@ -926,12 +1039,17 @@ class Command(BaseCommand):
         try:
             client.images.get(image_name)
         except docker.errors.NotFound:
-            output('本地 docker 镜像 {} 不存在，开始拉取...'.format(image_name))
-            return_code = os.system('docker pull {}'.format(image_name))
-            if return_code != 0:
-                output('镜像拉取失败，请重试')
-                sys.exit(1)
-            output('镜像拉取成功')
+            output(
+                '[cyan]本地 docker 镜像 {} 不存在，开始拉取...[/cyan]'.format(
+                    image_name
+                )
+            )
+            with console.status('拉取 docker 镜像中...', spinner='earth'):
+                return_code = os.system('docker pull {}'.format(image_name))
+                if return_code != 0:
+                    output('[red]镜像拉取失败，请重试[/red]')
+                    sys.exit(1)
+                output('[green]镜像拉取成功[/green]')
 
     def _force_remove_container(self, client, container_name):
         try:
@@ -946,7 +1064,7 @@ class Command(BaseCommand):
 
     def _run_by_container(self, client, image_name, command, container_name):
         home = get_home()
-        user = get_sys_user
+        user = get_sys_user()
         container = client.containers.run(
             image_name,
             command=command,
@@ -959,8 +1077,7 @@ class Command(BaseCommand):
         try:
             logs = container.logs(stream=True)
             for log in logs:
-                sys.stdout.write(log.decode('utf-8'))
-                sys.stdout.flush()
+                output_syntax(log.strip().decode('utf-8'), line_numbers=False)
         finally:
             if container.status != 'exited':
                 try:

@@ -50,7 +50,7 @@ def logger():
 
 @pytest.fixture(scope='session')
 def oauth2():
-    return OAuth2(CLIENT_ID, CLIENT_SECRET, endpoint=ENDPOINT)
+    return OAuth2(CLIENT_ID, CLIENT_SECRET, endpoint=ENDPOINT, max_retries=3)
 
 
 @pytest.fixture(scope='session')

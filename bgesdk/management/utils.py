@@ -1,15 +1,20 @@
 #-*- coding: utf-8 -*-
 
+import json
 import os
 import pkgutil
 import platform
 import six
 import sys
 
-from datetime import datetime
 from os.path import expanduser
 from posixpath import join, exists, abspath
-from six.moves import configparser, http_client
+from rich import print_json
+from rich.console import Console
+from rich.panel import Panel
+from rich.prompt import Confirm
+from rich.syntax import Syntax
+from six.moves import configparser
 
 from . import __path__, constants
 
@@ -20,9 +25,15 @@ else:
 
 NoSectionError = configparser.NoSectionError
 NoOptionError = configparser.NoOptionError
-HTTPConnection = http_client.HTTPConnection
 
 SYS_STR = platform.system().lower()
+
+console = Console()
+
+
+class CNConfirm(Confirm):
+
+    validate_error_message = "[prompt.invalid]请输入 Y 或 N"
 
 
 def get_home():
@@ -45,8 +56,10 @@ def get_config_path(project, check_exists=True):
     config_dir = get_config_dir()
     config_path = join(config_dir, '{}.ini'.format(project))
     if not exists(config_path) and check_exists:
-        print('{} 不存在，请运行 bge config 或 bge config add 命令初始化项目配置'
-              .format(project))
+        output(
+            '{} 不存在，请运行 bge config 或 bge config add 命令初始化项目配置'
+                .format(project)
+        )
         sys.exit(1)
     return config_path
 
@@ -54,16 +67,7 @@ def get_config_path(project, check_exists=True):
 def confirm(prompt=None):
     if prompt is None:
         prompt = '确认'
-    prompt = '%s\n[%s]/%s: ' % (prompt, 'Y', 'n')
-    while True:
-        ans = input(prompt)
-        if ans not in ['y', 'Y', 'n', 'N']:
-            print('请输入 Y 或 n')
-            continue
-        if ans == 'y' or ans == 'Y':
-            return True
-        if ans == 'n' or ans == 'N':
-            return False
+    return CNConfirm.ask(prompt)
 
 
 def find_commands(commands_dir):
@@ -128,12 +132,70 @@ def get_config_parser(path):
     return config_parser
 
 
-def output(*args, sep=' ', end='\n'):
+def output_json(data, cls=None):
+    # print_json(
+    #     data=data,
+    #     indent=4,
+    #     sort_keys=True,
+    #     ensure_ascii=False
+    # )
+    syntax = Syntax(
+        json.dumps(
+            data,
+            indent=4,
+            sort_keys=True,
+            ensure_ascii=False,
+            cls=cls
+        ),
+        lexer='JSON',
+        line_numbers=False,
+        word_wrap=True,
+        theme='monokai'
+    )
+    console.print(syntax)
+
+
+def output_file(filepath, title='', subtitle=''):
+    syntax = Syntax.from_path(
+        filepath,
+        line_numbers=True,
+        word_wrap=True,
+        theme='monokai'
+    )
+    panel = Panel(syntax, title=title, subtitle=subtitle)
+    console.print(panel)
+
+
+def output_panel(content, title='', subtitle='', lexer='python'):
+    syntax = Syntax(
+        content,
+        lexer=lexer,
+        line_numbers=True,
+        word_wrap=True,
+        theme='monokai'
+    )
+    panel = Panel(syntax, title=title, subtitle=subtitle)
+    console.print(panel)
+
+
+def output_syntax(content,
+                  lexer='python',
+                  line_numbers=True,
+                  theme='monokai'):
+    syntax = Syntax(
+        content,
+        lexer=lexer,
+        line_numbers=line_numbers,
+        word_wrap=True,
+        theme=theme
+    )
+    console.print(syntax)
+
+
+def output(*args, sep=' '):
     args = map(lambda x: str(x), args)
     content = '{}'.format(sep).join(args)
-    return sys.stdout.write(
-        "[{}] {}{}".format(datetime.now(), content, end)
-    )
+    console.print(content)
 
 
 def get_sys_user():
