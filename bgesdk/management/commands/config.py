@@ -2,15 +2,18 @@ import argparse
 import os
 import sys
 
-from posixpath import exists
+from posixpath import exists, splitext
 from rich.prompt import Prompt
+from rich.table import Table
 
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
     config_get,
     confirm,
+    console,
     get_active_project,
+    get_config_dir,
     get_config_parser,
     get_config_path,
     output,
@@ -61,6 +64,12 @@ class Command(BaseCommand):
             help=self.project_help
         )
         show_p.set_defaults(method=self.show_project, parser=show_p)
+        list_p = sub_ps.add_parser(
+            'list',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+            help='显示全部已配置的项目。'
+        )
+        list_p.set_defaults(method=list_projects, parser=list_p)
 
     def handler(self, args):
         project = get_active_project()
@@ -151,3 +160,38 @@ class Command(BaseCommand):
         config_path = get_config_path(project)
         title = 'BGE 开放平台 Python SDK 配置文件'
         output_file(config_path, title=title, subtitle=config_path)
+
+
+def list_projects(args=None):
+    active_project = get_active_project()
+    config_dir = get_config_dir()
+    projects = []
+    for filename in os.listdir(config_dir):
+        name, ext = splitext(filename)
+        if ext != '.ini':
+            continue
+        projects.append(name)
+    projects.sort()
+    table = Table(
+        title='通过 bge workon <NAME> 切换生效配置',
+        expand=True,
+        show_header=True,
+        header_style="magenta"
+    )
+    table.add_column(
+        "项目",
+        justify="center",
+        style="dim"
+    )
+    table.add_column("使用中", justify="center")
+    if active_project in projects:
+        table.add_row(
+            active_project,
+            'Y',
+            style="green",
+        )
+    for project in projects:
+        if project == active_project:
+            continue
+        table.add_row(project, '-')
+    console.print(table)
