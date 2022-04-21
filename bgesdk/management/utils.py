@@ -9,7 +9,6 @@ import sys
 
 from os.path import expanduser
 from posixpath import join, exists, abspath
-from rich import print_json
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
@@ -133,12 +132,6 @@ def get_config_parser(path):
 
 
 def output_json(data, cls=None):
-    # print_json(
-    #     data=data,
-    #     indent=4,
-    #     sort_keys=True,
-    #     ensure_ascii=False
-    # )
     syntax = Syntax(
         json.dumps(
             data,
