@@ -729,6 +729,7 @@ class Command(BaseCommand):
                 ziph.write(filepath, zip_relpath)
                 output('\t{}'.format(zip_relpath))
             for zip_relpath in sorted(minify_relpaths):
+                filepath = total_files[zip_relpath]
                 with open(filepath, 'r') as fp:
                     content = fp.read()
                 with tempfile.NamedTemporaryFile(mode='w') as temp_fp:
