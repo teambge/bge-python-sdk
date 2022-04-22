@@ -6,12 +6,13 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project,
     config_get,
-    read_config,
-    output
+    console,
+    get_active_project,
+    output,
+    output_json,
+    read_config
 )
-from bgesdk.version import __version__
 
 
 DEFAULT_OAUTH2_SECTION = constants.DEFAULT_OAUTH2_SECTION
@@ -58,16 +59,19 @@ class Command(BaseCommand):
         endpoint = config_get(config.get, oauth2_section, 'endpoint')
         api = API(access_token, endpoint=endpoint, timeout=18.)
         if not posixpath.isfile(filepath):
-            output('只能上传文件')
+            output('[red]只能上传文件[/red]')
             sys.exit(1)
         filename = args.filename
         cmk_id = args.cmk_id
         if not filename:
             filename = posixpath.split(filepath)[1]
-        try:
-            with open(filepath, 'rb') as fp:
-                object_name = api.upload(filename, fp, cmk_id=cmk_id)
-        except APIError as e:
-            output('\n\n请求失败：{}'.format(e))
-            sys.exit(1)
-        output('\n\n文件上传成功：{}'.format(object_name))
+        message = '正在上传文件 {}'.format(filepath)
+        with console.status(message, spinner='earth'):
+            try:
+                with open(filepath, 'rb') as fp:
+                    object_name = api.upload(filename, fp, cmk_id=cmk_id)
+            except APIError as e:
+                output('[red]请求失败：[/red]')
+                output_json(e.result)
+                sys.exit(1)
+            output('[green]文件上传成功，存储位置：[/green]{}'.format(object_name))

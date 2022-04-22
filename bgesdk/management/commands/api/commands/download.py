@@ -6,12 +6,13 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project,
     config_get,
-    read_config,
-    output
+    console,
+    get_active_project,
+    output,
+    output_json,
+    read_config
 )
-from bgesdk.version import __version__
 
 
 DEFAULT_OAUTH2_SECTION = constants.DEFAULT_OAUTH2_SECTION
@@ -79,7 +80,11 @@ class Command(BaseCommand):
         api = API(access_token, endpoint=endpoint, timeout=18.)
         filename = posixpath.split(object_name)[1]
         if filename == '':
-            output('下载失败，object_name 不是文件：{}'.format(repr(object_name)))
+            output(
+                '[red]下载失败，object_name 不是文件：{}[/red]'.format(
+                    repr(object_name)
+                )
+            )
             sys.exit(1)
         if posixpath.exists(filename):
             basename, suffix = posixpath.splitext(filename)
@@ -90,16 +95,19 @@ class Command(BaseCommand):
                 if not posixpath.exists(filename):
                     break
                 i += 1
-        try:
-            with open(filename, mode) as fp:
-                api.download(
-                    object_name,
-                    fp,
-                    region=args.region,
-                    expiration_time=args.expiration_time,
-                    chunk_size=args.chunk_size
-                )
-        except APIError as e:
-            output('\n\n请求失败：{}'.format(e))
-            sys.exit(1)
-        output('\n\n文件下载成功：{}'.format(filename))
+        message = '正在下载 {}'.format(object_name)
+        with console.status(message, spinner='earth'):
+            try:
+                with open(filename, mode) as fp:
+                    api.download(
+                        object_name,
+                        fp,
+                        region=args.region,
+                        expiration_time=args.expiration_time,
+                        chunk_size=args.chunk_size
+                    )
+            except APIError as e:
+                output('[red]请求失败：[/red]')
+                output_json(e.result)
+                sys.exit(1)
+            output('[green]文件下载成功：[/green]{}'.format(filename))

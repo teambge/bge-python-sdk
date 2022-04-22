@@ -5,11 +5,14 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project,
     config_get,
+    console,
+    get_active_project,
     get_config_path,
     get_config_parser,
-    output
+    output,
+    output_json,
+    output_syntax
 )
 
 
@@ -32,13 +35,15 @@ class Command(BaseCommand):
         try:
             token_result = oauth2.get_credentials_token()
         except APIError as e:
-            output('令牌获取出错: {}'.format(e))
+            output('[red]令牌获取出错：[/red]')
+            output_json(e.result)
             sys.exit(1)
         self._write_token_config(project, token_result)
-        output('令牌内容如下：')
-        output('')
+        console.rule('[green]令牌内容如下[/green]')
+        content = []
         for key in ['access_token', 'token_type', 'expires_in', 'scope']:
-            output('{} = {}'.format(key, token_result[key]))
+            content.append('{} = {}'.format(key, token_result[key]))
+        output_syntax('\n'.join(content), lexer='INI')
 
     def _write_token_config(self, project, token_result):
         access_token = token_result['access_token']
@@ -56,4 +61,4 @@ class Command(BaseCommand):
         config_parser.set(section_name, 'scope', scope)
         with open(config_path, 'w') as config_file:
             config_parser.write(config_file)
-        output('令牌已保存至：{}'.format(config_path))
+        output('[green]令牌已保存至：[/green]{}'.format(config_path))

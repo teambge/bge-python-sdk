@@ -6,10 +6,9 @@ install:
 	$(PYTHON) setup.py install
 
 # 构建源码包
-build: wheel
+build:
 	$(PYTHON) setup.py bdist_wheel
-	$(PYTHON) setup.py sdist --formats=gztar,zip,bztar,xztar,ztar,tar
-	$(PYTHON) setup.py bdist
+	$(PYTHON) setup.py sdist
 
 # 单元测试
 test:
@@ -24,6 +23,9 @@ upload-test:
 upload:
 	pip install twine; \
 	twine upload dist/*
+
+changelog:
+	npm run changelog
 
 clean:
 	rm -rf build \
@@ -40,6 +42,7 @@ clean:
 		   bgesdk/management/commands/api/commands/*.pyc \
 		   bgesdk/management/commands/api/commands/__pycache__/ \
 		   tests/*.pyc \
-		   tests/__pycache__/
+		   tests/__pycache__/ \
+		   .bge/tmp/*
 
-.PHONY: test upload upload-test build wheel install clean
+.PHONY: test upload upload-test build install changelog clean
