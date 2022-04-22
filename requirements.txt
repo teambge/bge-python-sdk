@@ -11,3 +11,5 @@ pimento
 qprompt
 requests_toolbelt
 validator.py
+python-minifier
+rich

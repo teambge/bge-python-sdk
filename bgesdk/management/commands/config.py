@@ -2,19 +2,23 @@ import argparse
 import os
 import sys
 
-from posixpath import exists
-from six.moves import input
+from posixpath import exists, splitext
+from rich.prompt import Prompt
+from rich.table import Table
 
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_config_parser,
     config_get,
-    secure_str,
-    get_config_path,
     confirm,
+    console,
     get_active_project,
-    output
+    get_config_dir,
+    get_config_parser,
+    get_config_path,
+    output,
+    output_file,
+    secure_str,
 )
 
 
@@ -60,6 +64,12 @@ class Command(BaseCommand):
             help=self.project_help
         )
         show_p.set_defaults(method=self.show_project, parser=show_p)
+        list_p = sub_ps.add_parser(
+            'list',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+            help='显示全部已配置的项目。'
+        )
+        list_p.set_defaults(method=list_projects, parser=list_p)
 
     def handler(self, args):
         project = get_active_project()
@@ -69,10 +79,9 @@ class Command(BaseCommand):
 
     def add_project(self, args):
         project = args.project.lower()
-        output('正在添加配置 {}：\n'.format(project))
         config_path = get_config_path(project, check_exists=False)
         if exists(config_path):
-            output('配置 {} 已存在'.format(project))
+            output('[red]配置 {} 已存在'.format(project))
             sys.exit(1)
         self._new_project(config_path)
 
@@ -102,10 +111,16 @@ class Command(BaseCommand):
             secure = conf.get('secure')
             description = conf.get('description', '')
             value = saved_value or conf.get('default', '')
+            show_value = value
             if secure and value:
-                value = secure_str(value)
-            input_value = input(
-                '？请输入{} {} [{}]：'.format(description, key, value))
+                show_value = secure_str(value)
+            input_value = Prompt.ask(
+                '请输入{} {} ([bold cyan]{}[/bold cyan])'.format(
+                    description, key, show_value
+                ),
+                show_default=False,
+                default=value
+            )
             if input_value:
                 config_parser.set(oauth2_section, key, input_value)
             elif saved_value is None:
@@ -117,13 +132,15 @@ class Command(BaseCommand):
         with open(config_path, 'w') as config_file:
             config_parser.write(config_file)
         output('')
-        output('配置已保存至：{}'.format(config_path))
+        output('[green]配置已保存至：[/green]{}'.format(config_path))
 
     def remove_project(self, args):
         project = args.project.lower()
         activate_project = get_active_project()
         if activate_project == project:
-            output('无法删除正在使用的配置，删除前请先使用 bge workon project 切换')
+            output(
+                '[red]无法删除正在使用的配置，请先使用 bge workon 切换至其他项目[/red]'
+            )
             sys.exit(1)
         config_path = get_config_path(project)
         if not confirm(prompt='确认删除配置项目 {}？'.format(project)):
@@ -133,7 +150,7 @@ class Command(BaseCommand):
             os.unlink(config_path)
         except (IOError, OSError):
             pass
-        output('成功删除配置项目 {}'.format(project))
+        output('[green]成功删除配置项目[/green] {}'.format(project))
 
     def show_project(self, args):
         project = args.project
@@ -141,8 +158,40 @@ class Command(BaseCommand):
             project = get_active_project()
         project = project.lower()
         config_path = get_config_path(project)
-        output('配置文件：{}'.format(config_path))
-        output('配置详情：')
-        output('')
-        with open(config_path, 'r') as config_file:
-            output(config_file.read())
+        title = 'BGE 开放平台 Python SDK 配置文件'
+        output_file(config_path, title=title, subtitle=config_path)
+
+
+def list_projects(args=None):
+    active_project = get_active_project()
+    config_dir = get_config_dir()
+    projects = []
+    for filename in os.listdir(config_dir):
+        name, ext = splitext(filename)
+        if ext != '.ini':
+            continue
+        projects.append(name)
+    projects.sort()
+    table = Table(
+        title='通过 bge workon <NAME> 切换生效配置',
+        expand=True,
+        show_header=True,
+        header_style="magenta"
+    )
+    table.add_column(
+        "项目",
+        justify="center",
+        style="dim"
+    )
+    table.add_column("使用中", justify="center")
+    if active_project in projects:
+        table.add_row(
+            active_project,
+            'Y',
+            style="green",
+        )
+    for project in projects:
+        if project == active_project:
+            continue
+        table.add_row(project, '-')
+    console.print(table)

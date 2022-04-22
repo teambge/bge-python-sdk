@@ -10,12 +10,10 @@ class TestOAuth2:
     def test_authorization_url_is_str(self, oauth2, redirect_uri):
         """获取用户授权页面链接"""
         url = oauth2.get_authorization_url(redirect_uri)
-        print(url)
         assert isinstance(url, str)
 
     def test_invalid_code(self, oauth2, access_token):
         """错误的用户授权 code 和 redirect_uri"""
-        print(access_token)
         with pytest.raises(APIError) as e:
             oauth2.exchange_authorization_code('code', 'http://test.cn')
         assert e.value.code == 400

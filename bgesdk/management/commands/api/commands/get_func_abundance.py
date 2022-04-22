@@ -1,4 +1,3 @@
-import json
 import sys
 
 from bgesdk.client import API
@@ -6,13 +5,13 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project,
     config_get,
-    read_config,
-    output
+    get_active_project,
+    output,
+    output_json,
+    read_config
 )
 from bgesdk.models import ModelEncoder
-from bgesdk.version import __version__
 
 
 DEFAULT_OAUTH2_SECTION = constants.DEFAULT_OAUTH2_SECTION
@@ -45,12 +44,6 @@ class Command(BaseCommand):
             help='BGE物种功能编号，多个值以逗号隔开。'
         )
         parser.add_argument(
-            '--pretty',
-            default=False,
-            action='store_true',
-            help='打印可读性高的 JSON 字符串。'
-        )
-        parser.add_argument(
             '-t',
             '--access_token',
             type=str,
@@ -70,7 +63,6 @@ class Command(BaseCommand):
         )
 
     def handler(self, args):
-        pretty = args.pretty
         access_token = args.access_token
         biosample_id = args.biosample_id
         catalog = args.catalog
@@ -91,13 +83,11 @@ class Command(BaseCommand):
                 limit=args.limit
             )
         except APIError as e:
-            output('请求失败：{}'.format(e))
+            output('[red]请求失败：[/red]')
+            output_json(e.result)
             sys.exit(1)
-        if pretty:
-            result = json.dumps(
-                result, ensure_ascii=False, indent=4, cls=ModelEncoder
-            )
-        else:
-            result = json.dumps(result, ensure_ascii=False, cls=ModelEncoder)
-        output('请求成功，返回值：')
-        output(result)
+        output('[green]请求成功：[/green]')
+        output_json(
+            result,
+            cls=ModelEncoder
+        )

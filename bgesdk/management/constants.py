@@ -1,4 +1,3 @@
-
 # For terminal commands
 DEFAULT_MODEL_SECTION = 'Model'
 DEFAULT_OAUTH2_SECTION = 'OAuth2'
@@ -9,7 +8,6 @@ DEFAULT_MODEL_TIMEOUT = None
 MODEL_CONTAINER_PREFIX = 'bge-model-'
 TEST_SERVER_PORT = 9999
 TEST_SERVER_ENDPOINT = 'http://0.0.0.0:{}'.format(TEST_SERVER_PORT)
-
 
 CLIENT_CREDENTIALS_CONFIGS = [
     ('client_id', {
@@ -30,13 +28,17 @@ CLIENT_CREDENTIALS_CONFIGS = [
 ]
 
 TAB_CHOICES = [
-        ('genetic_diseases', '遗传疾病'),
-        ('health_risks', '健康风险'),
-        ('physiological_index', '生理指标'),
-        ('comprehensive', '综合'),
-        ('tools', '工具')
-    ]
-LANGUAGE_CHOICES = [('zh', '中文版'), ('en', 'English')]
+    ('genetic_diseases', '遗传疾病'),
+    ('health_risks', '健康风险'),
+    ('physiological_index', '生理指标'),
+    ('comprehensive', '综合'),
+    ('tools', '工具')
+]
+
+LANGUAGE_CHOICES = [
+    ('zh', '中文版'),
+    ('en', 'English')
+]
 
 TITLE_NAME = {
     'brief_intro': '简介',

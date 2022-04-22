@@ -1,7 +1,8 @@
 import os
-import posixpath
 import sys
 
+
+from rich.table import Table
 from posixpath import join, isfile
 
 from bgesdk.client import API
@@ -9,12 +10,13 @@ from bgesdk.error import APIError
 from bgesdk.management import constants
 from bgesdk.management.command import BaseCommand
 from bgesdk.management.utils import (
-    get_active_project,
     config_get,
-    read_config,
-    output
+    console,
+    get_active_project,
+    output,
+    output_json,
+    read_config
 )
-from bgesdk.version import __version__
 
 
 DEFAULT_OAUTH2_SECTION = constants.DEFAULT_OAUTH2_SECTION
@@ -62,13 +64,25 @@ class Command(BaseCommand):
             if isfile(filepath):
                 files.append(filepath)
         if not files:
-            output('文件夹中没有可上传的文件')
+            output('[red]文件夹中没有可上传的文件[/red]')
             sys.exit(1)
-        try:
-            object_names = api.upload_dir(dirpath, cmk_id=cmk_id)
-        except APIError as e:
-            output('\n\n请求失败：{}'.format(e))
-            sys.exit(1)
-        output('\n文件上传成功：')
-        for i, object_name in enumerate(object_names, 1):
-            output('{}. {}'.format(i, object_name))
+        message = '正在上传目录 {}'.format(dirpath)
+        with console.status(message, spinner='earth'):
+            try:
+                object_names = api.upload_dir(dirpath, cmk_id=cmk_id)
+            except APIError as e:
+                output('[red]请求失败：[/red]')
+                output_json(e.result)
+                sys.exit(1)
+            output('[green]文件上传成功：[/green]')
+            table = Table(
+                title="文件列表",
+                expand=True,
+                show_header=True,
+                header_style="magenta"
+            )
+            table.add_column("序号", style="cyan", no_wrap=True)
+            table.add_column("存储位置", style="magenta", overflow='fold')
+            for i, object_name in enumerate(object_names, 1):
+                table.add_row(str(i), object_name)
+            console.print(table)
