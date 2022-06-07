@@ -14,9 +14,7 @@ import zipfile
 
 from datetime import datetime
 from posixpath import join, exists, isdir, relpath
-from rich.live import Live
 from rich.prompt import Prompt
-from rich.table import Table
 from time import sleep
 from uuid import uuid4
 
@@ -59,14 +57,12 @@ import logging
 def handler(event, context):
     logging.debug(event)
     event = json.loads(event)
-    biosample_id = event['biosample_id']
     access_token = event['access_token']
     params = event['params']
     return json.dumps({
         "model_code": 0,
         "model_msg": "success",
         "model_data": {
-            'biosample_id': biosample_id,
             'params': params,
             'sdk': {
                 'version': bgesdk.__version__
@@ -158,6 +154,18 @@ WHEREIS_DOCKER = 'whereis docker'
 ZIP_COMPRESSION = zipfile.ZIP_DEFLATED
 
 
+class TestServerPortAction(argparse.Action):
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        print(namespace)
+        if not namespace.test and values:
+            parser.error(
+                'argument -p/--port: only allowed with argument -t/--test'
+            )
+        else:
+            namespace.port = values
+
+
 class Command(BaseCommand):
 
     order = 5
@@ -243,6 +251,15 @@ class Command(BaseCommand):
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
             help='启动本地 HTTP 测试服务器'
         )
+        start_p.add_argument(
+            '-p',
+            '--port',
+            default=TEST_SERVER_PORT,
+            type=int,
+            choices=range(1,65536),
+            metavar="[1-65535]",
+            help='服务器监听端口'
+        )
         start_p.set_defaults(method=self.start_model, parser=start_p)
 
         expfs_p = model_subparsers.add_parser(
@@ -286,7 +303,7 @@ class Command(BaseCommand):
             help='调用线上稳定版模型。'
         )
         group = run_p.add_mutually_exclusive_group()
-        group.add_argument(
+        draft_a = group.add_argument(
             '-d',
             '--draft',
             default=False,
@@ -300,6 +317,18 @@ class Command(BaseCommand):
             action="store_true",
             help='调用本地启动的测试服务器运行模型。'
         )
+        group_2 = run_p.add_mutually_exclusive_group()
+        group_2.add_argument(
+            '-p',
+            '--port',
+            default=TEST_SERVER_PORT,
+            type=int,
+            action=TestServerPortAction,
+            choices=range(1,65536),
+            metavar="[1-65535]",
+            help='服务器监听端口'
+        )
+        group_2._group_actions.append(draft_a)  # 禁止 -p 与 -d 参数同时提供
         group = run_p.add_mutually_exclusive_group()
         group.add_argument(
             '-a',
@@ -907,9 +936,12 @@ class Command(BaseCommand):
             if draft is True:
                 result = api.invoke_draft_model(model_id, **params)
             elif test is True:
+                port = args.port
                 api = API(
-                    access_token, endpoint=TEST_SERVER_ENDPOINT,
-                    timeout=DEFAULT_MODEL_TIMEOUT)
+                    access_token,
+                    endpoint='{}:{}'.format(TEST_SERVER_ENDPOINT, port),
+                    timeout=DEFAULT_MODEL_TIMEOUT
+                )
                 result = api.invoke_model(model_id, **params)
             else:
                 result = api.invoke_model(model_id, **params)
@@ -972,7 +1004,7 @@ class Command(BaseCommand):
             output('[green]安装完成[/green]')
 
     def start_model(self, args):
-        output('Model debug server is starting ...')
+        port = args.port
         home = get_home()
         config_path = self.get_model_config_path()
         config = get_config_parser(config_path)
@@ -992,13 +1024,16 @@ class Command(BaseCommand):
             name=container_name,
             volumes={home: { 'bind': WORKDIR, 'mode': 'rw' }},
             stop_signal='SIGINT',
-            ports={TEST_SERVER_PORT: TEST_SERVER_PORT},
+            ports={TEST_SERVER_PORT: port},
             user=user,
             detach=True,
             stream=True,
             auto_remove=True)
+        output('Model debug server is starting at {}...'.format(port))
         output('Model {} was registered'.format(model_id))
-        output('\n\tURL: {}/model/{}'.format(TEST_SERVER_ENDPOINT, model_id))
+        output('\n\tURL: {}:{}/model/{}'.format(
+            TEST_SERVER_ENDPOINT, port, model_id
+        ))
         output('\tMethod: GET\n')
         try:
             logs = container.logs(stream=True, follow=True)
@@ -1048,9 +1083,22 @@ class Command(BaseCommand):
             with console.status('拉取 docker 镜像中...', spinner='earth'):
                 return_code = os.system('docker pull {}'.format(image_name))
                 if return_code != 0:
-                    output('[red]镜像拉取失败，请重试[/red]')
+                    output(
+                        '[red]拉取镜像 {} 失败，请重试[/red]'.format(image_name)
+                    )
                     sys.exit(1)
-                output('[green]镜像拉取成功[/green]')
+                output('[green]拉取镜像 {} 成功[/green]'.format(image_name))
+        else:
+            with console.status('更新 docker 镜像中...', spinner='earth'):
+                repository, tag = image_name.split(':')
+                try:
+                    client.images.pull(repository, tag)
+                except docker.errors.APIError:
+                    output(
+                        '[red]更新镜像 {} 失败，请重试[/red]'.format(image_name)
+                    )
+                    sys.exit(1)
+                output('[green]更新镜像 {} 成功[/green]'.format(image_name))
 
     def _force_remove_container(self, client, container_name):
         try:
