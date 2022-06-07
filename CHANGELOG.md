@@ -1,8 +1,9 @@
-# [0.3.0](https://gitlab.omgut.com/bge/bge-python-sdk/compare/v0.2.4...v0.3.0) (2022-04-22)
+## [0.3.2](https://gitlab.omgut.com/bge/bge-python-sdk/compare/v0.2.4...v0.3.2) (2022-06-07)
 
 
 ### Bug Fixes
 
+* 修复混淆代码打包错误的问题 ([592bc41](https://gitlab.omgut.com/bge/bge-python-sdk/commit/592bc4112a6ecc0c6c6b92036231fbbb22ba2274))
 * 修复模型配置命令不输入模型编号无法进入下一步的问题 ([e942e02](https://gitlab.omgut.com/bge/bge-python-sdk/commit/e942e0271c25bb6cba5170c40ead5a6000702cf5))
 * 专业级变异接口regions参数验证 ([56ab2c8](https://gitlab.omgut.com/bge/bge-python-sdk/commit/56ab2c812e6b7cf78534ba91884952081c57e3fb))
 * regions参数改为列表传入 ([023554a](https://gitlab.omgut.com/bge/bge-python-sdk/commit/023554acdf471d45a9800753ab2f2e78addf5ed8))
@@ -16,7 +17,7 @@
 * 新增专业级变异接口 ([b753be0](https://gitlab.omgut.com/bge/bge-python-sdk/commit/b753be0b57f86d3e74431cbee226430ff6113c5d))
 * 增加模型代码混淆功能并使用 rich 增强命令行工具 ([44d83c6](https://gitlab.omgut.com/bge/bge-python-sdk/commit/44d83c6f71d6a3e511b5dc9f46790da2d9745ff8))
 * **command:** 增加 bge config list 命令 ([be7e542](https://gitlab.omgut.com/bge/bge-python-sdk/commit/be7e5428efee38026f83acd1d2f33c94b9761c54))
-
+* **model:** 新增模型本地服务器端口参数并在运行模型命令时尝试更新 docker 镜像 ([d408a1c](https://gitlab.omgut.com/bge/bge-python-sdk/commit/d408a1cc4c185b3fb2e8df645c270af207943080))
 
 
 ## [0.2.8](https://gitlab.omgut.com/bge/bge-python-sdk/compare/v0.2.4...v0.2.8) (2022-04-18)
