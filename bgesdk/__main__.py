@@ -27,10 +27,19 @@ def init_parser():
         help='显示当前 BGE 开放平台 Python SDK 版本号。',
         version='version {}'.format(version.__version__)
     )
-    subparsers = parser.add_subparsers(
-        dest='command',
-        help='SDK 命令行工具可选子命令。'
-    )
+    try:
+        subparsers = parser.add_subparsers(
+            dest='command',
+            help='SDK 命令行工具可选子命令。'
+        )
+    except TypeError:
+        # required: Whether or not a subcommand must be provided, 
+        # by default False (added in 3.7)
+        subparsers = parser.add_subparsers(
+            dest='command',
+            help='SDK 命令行工具可选子命令。',
+            required=False
+        )
     command_names = get_commands()
     sort_items = []
     for sub_command_name in command_names:

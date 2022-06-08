@@ -173,11 +173,19 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         home = get_home()
-        model_subparsers = parser.add_subparsers(
-            dest='subcommand',
-            help='可选子命令。'
-        )
-
+        try:
+            model_subparsers = parser.add_subparsers(
+                dest='subcommand',
+                help='可选子命令。'
+            )
+        except TypeError:
+            # required: Whether or not a subcommand must be provided, 
+            # by default False (added in 3.7)
+            model_subparsers = parser.add_subparsers(
+                dest='subcommand',
+                help='可选子命令。',
+                required=False
+            )
         # 初始化脚手架命令
         init_p = model_subparsers.add_parser(
             'init',

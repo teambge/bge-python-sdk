@@ -29,10 +29,17 @@ class Command(BaseCommand):
     project_help = '全局配置项目名。'
 
     def add_arguments(self, parser):
-        sub_ps = parser.add_subparsers(
-            help='新增、删除、显示 OAuth2 配置',
-            required=False
-        )
+        try:
+            sub_ps = parser.add_subparsers(
+                help='新增、删除、显示 OAuth2 配置'
+            )
+        except TypeError:
+            # required: Whether or not a subcommand must be provided, 
+            # by default False (added in 3.7)
+            sub_ps = parser.add_subparsers(
+                help='新增、删除、显示 OAuth2 配置',
+                required=False
+            )
         add_p = sub_ps.add_parser(
             'add',
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,

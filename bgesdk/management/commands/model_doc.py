@@ -41,11 +41,17 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         home = get_home()
-        doc_ps = parser.add_subparsers(
-            help='对模型文档进行预览和发布',
-            required=False
-        )
-
+        try:
+            doc_ps = parser.add_subparsers(
+                help='对模型文档进行预览和发布'
+            )
+        except TypeError:
+            # required: Whether or not a subcommand must be provided, 
+            # by default False (added in 3.7)
+            doc_ps = parser.add_subparsers(
+                help='对模型文档进行预览和发布',
+                required=False
+            )
         init_p = doc_ps.add_parser(
             'init',
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,

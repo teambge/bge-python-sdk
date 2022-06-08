@@ -21,10 +21,19 @@ class Command(BaseCommand):
     help='BGE 开放平台接口测试工具，可调用部分平台接口。'
 
     def add_arguments(self, parser):
-        api_subparsers = parser.add_subparsers(
-            dest='subcommand',
-            help='可选子命令。'
-        )
+        try:
+            api_subparsers = parser.add_subparsers(
+                dest='subcommand',
+                help='可选子命令。'
+            )
+        except TypeError:
+            # required: Whether or not a subcommand must be provided, 
+            # by default False (added in 3.7)
+            api_subparsers = parser.add_subparsers(
+                dest='subcommand',
+                help='可选子命令。',
+                required=False
+            )
         commands_dir = posixpath.join(__path__[0], 'commands')
         command_names = find_commands(commands_dir)
         sort_items = []
