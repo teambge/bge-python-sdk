@@ -27,9 +27,13 @@ class HTTPRequest(object):
         self.session = requests.Session()
         if max_retries is not None:
             self.session.mount(
-                'http://', HTTPAdapter(max_retries=max_retries))
+                'http://',
+                HTTPAdapter(max_retries=max_retries)
+            )
             self.session.mount(
-                'https://', HTTPAdapter(max_retries=max_retries))
+                'https://',
+                HTTPAdapter(max_retries=max_retries)
+            )
 
     def set_authorization(self, token_type, access_token):
         """设置 Authorization 头部
@@ -38,7 +42,9 @@ class HTTPRequest(object):
             access_token (str): 访问令牌
         """
         self.headers['Authorization'] = '{} {}'.format(
-            token_type, access_token)
+            token_type,
+            access_token
+        )
 
     def get(self, path, params=None, headers=None, timeout=None):
         """GET 接口请求
@@ -53,7 +59,12 @@ class HTTPRequest(object):
             object: 请求返回值
         """
         return self._request(
-            'GET', path, params=params, headers=headers, timeout=timeout)
+            'GET',
+            path,
+            params=params,
+            headers=headers,
+            timeout=timeout
+        )
 
     def post(self, path, params=None, data=None, files=None, headers=None,
              timeout=None):
@@ -71,8 +82,14 @@ class HTTPRequest(object):
             object: 请求返回值
         """
         return self._request(
-            'POST', path, params=params, data=data, files=files,
-            headers=headers, timeout=timeout)
+            'POST',
+            path,
+            params=params,
+            data=data,
+            files=files,
+            headers=headers,
+            timeout=timeout
+        )
 
     def _request(self, method, path, timeout=None, headers=None, **kwargs):
         """发送 HTTP 请求
@@ -98,8 +115,12 @@ class HTTPRequest(object):
              ': %s\n\t**kwargs=%s'), method, url, headers, timeout, kwargs)
         try:
             resp = self.session.request(
-                method=method, url=url, headers=headers, timeout=timeout,
-                **kwargs)
+                method=method,
+                url=url,
+                headers=headers,
+                timeout=timeout,
+                **kwargs
+            )
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
             raise BGEError('API request error: %s' % e)

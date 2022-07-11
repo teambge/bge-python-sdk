@@ -924,7 +924,7 @@ class API(object):
             '/data_item/batch_retrieve', params=params, timeout=timeout)
         return models.Model(result)
 
-    def invoke_model(self, model_id, **kwargs):
+    def invoke_model(self, model_id, headers=None, **kwargs):
         """模型调用
 
         Args:
@@ -943,10 +943,15 @@ class API(object):
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
         model_url = '/model/{}'.format(model_id)
-        result = request.get(model_url, params=params, timeout=timeout)
+        result = request.get(
+            model_url,
+            params=params,
+            headers=headers,
+            timeout=timeout
+        )
         return models.Model(result)
 
-    def invoke_draft_model(self, model_id, **kwargs):
+    def invoke_draft_model(self, model_id, headers=None, **kwargs):
         """调用灰度部署版本模型
 
         Args:
@@ -965,7 +970,12 @@ class API(object):
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
         model_url = '/model/{}/draft'.format(model_id)
-        result = request.get(model_url, params=params, timeout=timeout)
+        result = request.get(
+            model_url,
+            params=params,
+            headers=headers,
+            timeout=timeout
+        )
         return models.Model(result)
 
     def deploy_model(self, model_id, object_name=None, runtime=None,
@@ -1122,6 +1132,32 @@ class API(object):
             'Content-Type': m.content_type
         })
         sys.stdout.write('')
+        return models.Model(result)
+
+    def model_license(self, model_id, expires=60, params=None):
+        """模型运行许可
+
+        Args:
+            model_id (str): 模型编号。
+            **kwargs: 模型相关参数，由模型定义的参数决定；
+
+        Returns:
+            Model: 授权模型运行的对称加密相关参数；
+        """
+        data = {}
+        data['model_id'] = model_id
+        data['expires'] = expires
+        if params:
+            params = json.dumps(params)
+        data['params'] = params
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        model_url = '/model/license'
+        result = request.post(model_url, data=data, timeout=timeout)
         return models.Model(result)
 
     def task(self, task_id):

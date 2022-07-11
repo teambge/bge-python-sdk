@@ -201,3 +201,14 @@ def get_sys_user():
         gid = pwd_info.pw_gid
         user = '{}:{}'.format(uid, gid)
     return user
+
+
+def generate_next_path(path_pattern):
+    i = 1
+    while os.path.exists(path_pattern % i):
+        i = i * 2
+    a, b = (i // 2, i)
+    while a + 1 < b:
+        c = (a + b) // 2
+        a, b = (c, b) if os.path.exists(path_pattern % c) else (a, c)
+    return path_pattern % b

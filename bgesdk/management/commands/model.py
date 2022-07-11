@@ -1,4 +1,5 @@
 import argparse
+import csv
 import docker
 import fnmatch
 import json
@@ -16,6 +17,7 @@ from datetime import datetime
 from posixpath import join, exists, isdir, relpath
 from rich.prompt import Prompt
 from time import sleep
+from traceback import format_exc
 from uuid import uuid4
 
 from bgesdk.client import API
@@ -31,6 +33,7 @@ from bgesdk.management.utils import (
     get_home,
     get_sys_user,
     generate_container_name,
+    generate_next_path,
     output,
     output_json,
     output_syntax,
@@ -157,13 +160,23 @@ ZIP_COMPRESSION = zipfile.ZIP_DEFLATED
 class TestServerPortAction(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
-        print(namespace)
-        if not namespace.test and values:
+        if not getattr(namespace, 'test', None) and values:
             parser.error(
                 'argument -p/--port: only allowed with argument -t/--test'
             )
         else:
             namespace.port = values
+
+
+class TestServerLicenseKeyAction(argparse.Action):
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not getattr(namespace, 'test', None) and values:
+            parser.error(
+                '--license-key only allowed with argument -t/--test'
+            )
+        else:
+            namespace.license_key = values
 
 
 class Command(BaseCommand):
@@ -270,6 +283,79 @@ class Command(BaseCommand):
         )
         start_p.set_defaults(method=self.start_model, parser=start_p)
 
+        new_license_p = model_subparsers.add_parser(
+            'new_license',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+            help='获取模型运行许可凭证'
+        )
+        new_license_p.add_argument(
+            '-m',
+            '--model_id',
+            type=str,
+            help='模型编号'
+        )
+        new_license_p.add_argument(
+            '-e',
+            '--expires',
+            type=int,
+            default=3600,
+            help='许可证有效期，单位：秒'
+        )
+        req_group = new_license_p.add_mutually_exclusive_group()
+        req_group.add_argument(
+            '-a',
+            '--args',
+            nargs=2,
+            action='append',
+            help='参数对，示例：--args f1 v1 --args f2 v2'
+        )
+        req_group.add_argument(
+            '-f',
+            '--file',
+            help='参数文件，每行为 JSON 字典，示例：{ "f1": "v1", "f2": "v2" }。'
+        )
+        new_license_p.add_argument(
+            '-c',
+            '--csv',
+            required=False,
+            default='new_license.csv',
+            help='输出的 CSV 文件路径'
+        )
+        new_license_p.set_defaults(
+            method=self.new_model_license,
+            parser=new_license_p
+        )
+
+        # 测试模型许可证（本命令仅支持调用 bge model start 启动的服务器接口）。
+        run_license_p = model_subparsers.add_parser(
+            'run_license',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+            help='许可证模式调用模型（仅支持调用 bge model start 启动的服务器接口）。'
+        )
+        run_license_p.add_argument(
+            'license_file',
+            help='运行许可证集合文件。'
+        )
+        run_license_p.add_argument(
+            '--csv',
+            required=False,
+            default='run_license.csv',
+            help='运行许可证集合文件。'
+        )
+        run_license_p.add_argument(
+            '-p',
+            '--port',
+            default=TEST_SERVER_PORT,
+            type=int,
+            choices=range(1,65536),
+            metavar="[1-65535]",
+            help='服务器监听端口'
+        )
+        run_license_p.set_defaults(
+            method=self.run_license,
+            parser=run_license_p
+        )
+
         expfs_p = model_subparsers.add_parser(
             'expfs',
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -325,6 +411,14 @@ class Command(BaseCommand):
             action="store_true",
             help='调用本地启动的测试服务器运行模型。'
         )
+        group_3 = run_p.add_mutually_exclusive_group()
+        group_3.add_argument(
+            '--license-key',
+            action=TestServerLicenseKeyAction,
+            required=False,
+            help='运行许可证。'
+        )
+        group_3._group_actions.append(draft_a)  # 禁止 -p 与 -d 参数同时提供
         group_2 = run_p.add_mutually_exclusive_group()
         group_2.add_argument(
             '-p',
@@ -912,6 +1006,209 @@ class Command(BaseCommand):
         else:
             output('下一页：{}'.format(result['next_page']))
 
+    def new_model_license(self, args):
+        """获取模型离线运行运行许可证
+
+        每个许可证在过期前不限制模型调用次数；
+        """
+        expires = args.expires
+        project = get_active_project()
+        if args.model_id:
+            model_id = args.model_id
+        else:
+            config_path = self.get_model_config_path()
+            config = get_config_parser(config_path)
+            section_name = DEFAULT_MODEL_SECTION
+            model_id = config_get(config.get, section_name, 'model_id')
+        oauth2_section = DEFAULT_OAUTH2_SECTION
+        token_section = DEFAULT_TOKEN_SECTION
+        config = read_config(project)
+        access_token = config_get(config.get, token_section, 'access_token')
+        endpoint = config_get(config.get, oauth2_section, 'endpoint')
+        api = API(
+            access_token,
+            endpoint=endpoint,
+            timeout=DEFAULT_MODEL_TIMEOUT
+        )
+        csv_file = args.csv
+        if isdir(csv_file):
+            csv_file = join(csv_file, 'new_license.csv')
+        if exists(csv_file):
+            csv_file = generate_next_path('{}%s'.format(csv_file))
+        with open(csv_file, 'w') as csv_fp:
+            csv_writer = csv.DictWriter(
+                csv_fp,
+                fieldnames=(
+                    'line_number',
+                    'model_id',
+                    'expires',
+                    'params',
+                    'license_key',
+                    'expiration_time',
+                    'expiration_utc_ts'
+                )
+            )
+            csv_writer.writeheader()
+            if args.file:
+                for num, params in enumerate(
+                        self._iter_model_params(args.file),
+                        start=1):
+                    console.rule()
+                    output(
+                        '处理第 [green]{}[/green] 行参数：{!r}'.format(
+                            num,
+                            params
+                        )
+                    )
+                    try:
+                        params_val = json.loads(params)
+                    except Exception:
+                        output(format_exc())
+                        continue
+                    try:
+                        r = self._get_model_license(
+                            api,
+                            model_id,
+                            expires,
+                            params_val
+                        )
+                    except Exception:
+                        output(format_exc())
+                        continue
+                    license_key = r['license_key']
+                    expiration_time = r['expiration_time']
+                    expiration_utc_ts = r['expiration_utc_ts']
+                    csv_writer.writerow({
+                        'line_number': num,
+                        'model_id': model_id,
+                        'expires': expires,
+                        'params': params,
+                        'license_key': license_key,
+                        'expiration_time': expiration_time,
+                        'expiration_utc_ts': expiration_utc_ts
+                    })
+                console.rule()
+            else:
+                params = {}
+                if args.args:
+                    params = dict(args.args)
+                try:
+                    r = self._get_model_license(
+                        api,
+                        model_id,
+                        expires,
+                        params
+                    )
+                except Exception:
+                    output(format_exc())
+                    return
+                license_key = r['license_key']
+                expiration_time = r['expiration_time']
+                expiration_utc_ts = r['expiration_utc_ts']
+                csv_writer.writerow({
+                    'line_number': 1,
+                    'model_id': model_id,
+                    'expires': expires,
+                    'params': json.dumps(params, sort_keys=True),
+                    'license_key': license_key,
+                    'expiration_time': expiration_time,
+                    'expiration_utc_ts': expiration_utc_ts
+                })
+            output('处理完成，数据已导出至 {}'.format(csv_file))
+
+    def run_license(self, args):
+        """在本地启动的模型服务器上使用许可证方式调用模型"""
+        license_file = args.license_file
+        port = args.port
+        params = {}
+        project = get_active_project()
+        config_path = self.get_model_config_path()
+        config = get_config_parser(config_path)
+        section_name = DEFAULT_MODEL_SECTION
+        model_id = config_get(config.get, section_name, 'model_id')
+        oauth2_section = DEFAULT_OAUTH2_SECTION
+        token_section = DEFAULT_TOKEN_SECTION
+        config = read_config(project)
+        access_token = config_get(config.get, token_section, 'access_token')
+        endpoint = config_get(config.get, oauth2_section, 'endpoint')
+        api = API(
+            access_token,
+            endpoint='{}:{}'.format(TEST_SERVER_ENDPOINT, port),
+            timeout=DEFAULT_MODEL_TIMEOUT
+        )
+        csv_file = args.csv
+        if isdir(csv_file):
+            csv_file = join(csv_file, 'run_license.csv')
+        if exists(csv_file):
+            csv_file = generate_next_path('{}%s'.format(csv_file))
+        with open(csv_file, 'w') as csv_wfp:
+            writer = csv.DictWriter(csv_wfp, fieldnames=(
+                'model_id',
+                'params',
+                'result',
+                'error'
+            ))
+            writer.writeheader()
+            with open(license_file) as fp:
+                license_reader = csv.DictReader(fp)
+                for r in license_reader:
+                    console.rule()
+                    output('开始处理：{!r}'.format(r))
+                    if model_id != r['model_id']:
+                        output(
+                            '[red]文件 {} 包含与项目不一致的 model_id：{}'.format(
+                                license_file,
+                                r['model_id']
+                            )
+                        )
+                        continue
+                    dumps_params = r['params']
+                    params = json.loads(dumps_params)
+                    license_key = r['license_key']
+                    # 只有测试服务器支持许可证模式运行模型
+                    headers = None
+                    if license_key:
+                        headers = {
+                            'BGE_LICENSE_KEY': license_key
+                        }
+                    try:
+                        result = api.invoke_model(
+                            model_id,
+                            headers=headers,
+                            **params
+                        )
+                    except APIError as e:
+                        output(
+                            '[red]失败！[/red]模型运行失败：{}'.format(e.result)
+                        )
+                        writer.writerow({
+                            'model_id': model_id,
+                            'params': dumps_params,
+                            'result': json.dumps(e.result, sort_keys=True),
+                            'error': True
+                        })
+                    except Exception:
+                        error = format_exc()
+                        output(
+                            '[red]失败！[/red]模型运行失败：{}'.format(error)
+                        )
+                        writer.writerow({
+                            'model_id': model_id,
+                            'params': dumps_params,
+                            'result': error,
+                            'error': True
+                        })
+                        sys.exit(1)
+                    output('[green]成功！[/green]模型调用完成')
+                    writer.writerow({
+                        'model_id': model_id,
+                        'params': dumps_params,
+                        'result': result.dumps(sort_keys=True),
+                        'error': False
+                    })
+        console.rule()
+        output('[green]运行结果已保存至[/green] {}'.format(csv_file))
+
     def run_model(self, args):
         params = {}
         if args.file:
@@ -945,12 +1242,23 @@ class Command(BaseCommand):
                 result = api.invoke_draft_model(model_id, **params)
             elif test is True:
                 port = args.port
+                license_key = args.license_key
                 api = API(
                     access_token,
                     endpoint='{}:{}'.format(TEST_SERVER_ENDPOINT, port),
                     timeout=DEFAULT_MODEL_TIMEOUT
                 )
-                result = api.invoke_model(model_id, **params)
+                # 只有测试服务器支持许可证模式运行模型
+                headers = None
+                if license_key:
+                    headers = {
+                        'BGE_LICENSE_KEY': license_key
+                    }
+                result = api.invoke_model(
+                    model_id,
+                    headers=headers,
+                    **params
+                )
             else:
                 result = api.invoke_model(model_id, **params)
         except APIError as e:
@@ -1046,7 +1354,7 @@ class Command(BaseCommand):
         try:
             logs = container.logs(stream=True, follow=True)
             for log in logs:
-                output(log.strip().decode('utf-8'))
+                output(log.decode('utf-8').rstrip('\n'))
         finally:
             if container.status != 'exited':
                 try:
@@ -1134,10 +1442,29 @@ class Command(BaseCommand):
         try:
             logs = container.logs(stream=True)
             for log in logs:
-                output_syntax(log.strip().decode('utf-8'), line_numbers=False)
+                output_syntax(
+                    log.decode('utf-8').rstrip('\n'),
+                    line_numbers=False
+                )
         finally:
             if container.status != 'exited':
                 try:
                     container.remove(force=True)
                 except Exception:
                     pass
+
+    def _iter_model_params(self, path):
+        with open(path) as fp:
+            while True:
+                line = fp.readline()
+                if not line:
+                    break
+                yield line.strip()
+
+    def _get_model_license(self, api, model_id, expires, params):
+        result = api.model_license(
+            model_id,
+            expires=expires,
+            params=params
+        )
+        return result.json()
