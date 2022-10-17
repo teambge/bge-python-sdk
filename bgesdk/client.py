@@ -25,7 +25,7 @@ from .utils import new_logger, human_byte
 
 from aliyunsdkcore.auth.credentials import StsTokenCredential
 from aliyunsdkcore.client import AcsClient
-from posixpath import split, join, isdir
+from posixpath import split, join, isdir, isfile
 from requests_toolbelt.multipart import encoder
 from six import text_type
 from six.moves.urllib.parse import urljoin, urlencode
@@ -794,7 +794,7 @@ class API(object):
         object_name = '%s/%s' % (destination, filename)
         bge_open_client_id_header = 'x-oss-meta-bge-open-client-id'
         custom_headers = { bge_open_client_id_header: client_id }
-        if isinstance(file_or_string, str):
+        if isinstance(file_or_string, str) and isfile(file_or_string):
             # 分片上传仅支持文件路径，不支持文件对象
             oss2.resumable_upload(
                 bucket,
