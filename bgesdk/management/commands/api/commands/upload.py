@@ -21,7 +21,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 10
+    order = 11
     help='上传文件。'
 
     def add_arguments(self, parser):
@@ -33,18 +33,35 @@ class Command(BaseCommand):
         parser.add_argument(
             '-f',
             '--filename',
-            help='服务器存储使用的文件名，不提供时默认使用上传文件的名字。'
+            help='服务器存储使用的文件名, 不提供时默认使用上传文件的名字。'
+        )
+        parser.add_argument(
+            '--part_size',
+            default=100,
+            type=int,
+            help='单个分片大小, 单位 MB。'
+        )
+        parser.add_argument(
+            '--multipart_threshold',
+            default=50,
+            type=int,
+            help='上传数据大于或等于该值时分片上传, 单位 MB。'
+        )
+        parser.add_argument(
+            '--multipart_num_threads',
+            default=constants.MULTIPART_NUM_THREADS,
+            help='分片上传缺省线程数。'
         )
         parser.add_argument(
             '-i',
             '--cmk_id',
-            help='阿里云 KMS 服务密钥 ID，提供时代表使用加密方式上传文件。'
+            help='阿里云 KMS 服务密钥 ID, 提供时代表使用加密方式上传文件。'
         )
         parser.add_argument(
             '-t',
             '--access_token',
             type=str,
-            help='访问令牌，为空时默认使用 bge token 命令获取到的 access_token。'
+            help='访问令牌, 为空时默认使用 bge token 命令获取到的 access_token。'
         )
 
     def handler(self, args):
@@ -63,15 +80,23 @@ class Command(BaseCommand):
             sys.exit(1)
         filename = args.filename
         cmk_id = args.cmk_id
+        part_size = args.part_size
+        multipart_threshold = args.multipart_threshold
         if not filename:
             filename = posixpath.split(filepath)[1]
         message = '正在上传文件 {}'.format(filepath)
         with console.status(message, spinner='earth'):
             try:
-                with open(filepath, 'rb') as fp:
-                    object_name = api.upload(filename, fp, cmk_id=cmk_id)
+                object_name = api.upload(
+                    filename,
+                    filepath,
+                    part_size=part_size * 1024 * 1024,
+                    multipart_threshold=multipart_threshold * 1024 * 1024,
+                    multipart_num_threads=args.multipart_num_threads,
+                    cmk_id=cmk_id
+                )
             except APIError as e:
                 output('[red]请求失败：[/red]')
                 output_json(e.result)
                 sys.exit(1)
-            output('[green]文件上传成功，存储位置：[/green]{}'.format(object_name))
+            output('[green]文件上传成功, 存储位置：[/green]{}'.format(object_name))

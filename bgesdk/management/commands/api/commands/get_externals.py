@@ -20,23 +20,31 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 14
-    help='获取 BGE 私有平台任务结果。'
+    order = 9
+    help='获取套件外部编号对应表。'
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'task_id',
-            help='任务编号。'
+            'project_id',
+            type=str,
+            help='项目编号。'
         )
         parser.add_argument(
-            '-t',
-            '--access_token',
+            'biosample_site',
             type=str,
-            help='访问令牌，为空时默认使用 bge token 命令获取到的 access_token。'
+            help='采样位置。'
+        )
+        parser.add_argument(
+            'external_ids',
+            type=str,
+            help='外部编号，逗号分割多个。'
         )
 
     def handler(self, args):
         access_token = args.access_token
+        project_id = args.project_id
+        biosample_site = args.biosample_site
+        external_ids = args.external_ids
         project = get_active_project()
         oauth2_section = DEFAULT_OAUTH2_SECTION
         token_section = DEFAULT_TOKEN_SECTION
@@ -46,7 +54,7 @@ class Command(BaseCommand):
         endpoint = config_get(config.get, oauth2_section, 'endpoint')
         api = API(access_token, endpoint=endpoint, timeout=18.)
         try:
-            result = api.task(args.task_id)
+            result = api.externals(project_id, biosample_site, external_ids)
         except APIError as e:
             output('[red]请求失败：[/red]')
             output_json(e.result)
