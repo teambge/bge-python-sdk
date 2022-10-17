@@ -66,3 +66,17 @@ class TestSample:
         if next_page is not None:
             ret = api.get_samples(page=next_page)
             self.check_samples(ret)
+
+    @pytest.mark.parametrize('external_sample_ids', [None, ''])
+    def test_non_externals(self, api, logger, external_sample_ids):
+        """空的外部编号"""
+        project_id = 'P-M0000000000'
+        biosample_site = 10
+        with pytest.raises(APIError) as e:
+            api.externals(
+                external_sample_ids,
+                biosample_site,
+                project_id
+            )
+        assert e.value.code == 41001
+        assert e.value.msg == u'参数错误'

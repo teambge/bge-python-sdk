@@ -25,7 +25,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 11
+    order = 12
     help='上传目录下文件（不递归上传子目录中文件）。'
 
     def add_arguments(self, parser):
@@ -33,6 +33,23 @@ class Command(BaseCommand):
             'dirpath',
             type=str,
             help='要上传的文件夹。'
+        )
+        parser.add_argument(
+            '--part_size',
+            default=100,
+            type=int,
+            help='单个分片大小, 单位 MB。'
+        )
+        parser.add_argument(
+            '--multipart_threshold',
+            default=50,
+            type=int,
+            help='上传数据大于或等于该值时分片上传, 单位 MB。'
+        )
+        parser.add_argument(
+            '--multipart_num_threads',
+            default=constants.MULTIPART_NUM_THREADS,
+            help='分片上传缺省线程数。'
         )
         parser.add_argument(
             '-i',
@@ -58,6 +75,8 @@ class Command(BaseCommand):
         api = API(access_token, endpoint=endpoint, timeout=18.)
         dirpath = args.dirpath
         cmk_id = args.cmk_id
+        part_size = args.part_size
+        multipart_threshold = args.multipart_threshold
         files = []
         for filename in os.listdir(dirpath):
             filepath = join(dirpath, filename)
@@ -69,7 +88,13 @@ class Command(BaseCommand):
         message = '正在上传目录 {}'.format(dirpath)
         with console.status(message, spinner='earth'):
             try:
-                object_names = api.upload_dir(dirpath, cmk_id=cmk_id)
+                object_names = api.upload_dir(
+                    dirpath,
+                    part_size=part_size * 1024 * 1024,
+                    multipart_threshold=multipart_threshold * 1024 * 1024,
+                    multipart_num_threads=args.multipart_num_threads,
+                    cmk_id=cmk_id
+                )
             except APIError as e:
                 output('[red]请求失败：[/red]')
                 output_json(e.result)

@@ -55,3 +55,12 @@ API_TABLE = {
     'Success': '返回参数',
     'State': '参数'
 }
+
+# 上传数据长度大于或等于该值时采用分片上传 100MB
+MULTIPART_THRESHOLD = 100 * 1024 * 1024
+
+# 单个分片大小 50MB
+PART_SIZE = 50 * 1024 * 1024
+
+# 分片上传缺省线程数
+MULTIPART_NUM_THREADS = 4
