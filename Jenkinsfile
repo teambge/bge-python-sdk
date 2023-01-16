@@ -34,7 +34,7 @@ pipeline {
         [key: 'ref', value: '$.ref']
       ],
       causeString: 'Triggered on $ref',
-      token: 'bge-git-webhook-trigger-token',
+      token: 'bge-python-sdk',
       printContributedVariables: true,
       printPostContent: true,
       silentResponse: false,
