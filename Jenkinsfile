@@ -13,10 +13,6 @@ pipeline {
     }
 
     stage('代码分析') {
-      when {
-        branch 'master';
-      }
-
       steps {
         script {
           def scannerHome = tool 'SonarScanner';
