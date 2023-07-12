@@ -1,3 +1,13 @@
+## [0.5.2](https://github.com/teambge/bge-python-sdk/compare/v0.5.1...v0.5.2) (2023-07-12)
+
+
+### Features
+
+* **phenotype:** 新增写入表型数据的接口 ([a4421ec](https://github.com/teambge/bge-python-sdk/commit/a4421ec6cca9ce004ddb53d953e1a6357e82f442))
+* **sms:** 新增发送短信接口 ([83c6823](https://github.com/teambge/bge-python-sdk/commit/83c682357bf34d68561dff78ad8c45c9475b5aff))
+
+
+
 ## [0.3.2](https://gitlab.omgut.com/bge/bge-python-sdk/compare/v0.2.4...v0.3.2) (2022-06-07)
 
 
