@@ -369,6 +369,7 @@ class API(object):
             organisms (str, 非必填): 样品生物体,取值范围: 1-3;
             data_availability (boolean, 非必填): 数据可用性;
             statuses (str, 非必填): 数据状态,详情见 BGE 开放平台文档;
+            require_files(boolean, 非必填）: 要求返回关联文件列表
             next_page (int, 非必填): 要获取的页码,默认值为 None;
             limit (int, 非必填): 每页返回数量,默认值为 50;
 
@@ -970,6 +971,43 @@ class API(object):
         request.set_authorization(self.token_type, self.access_token)
         result = request.get(
             '/stream/range', params=params, timeout=timeout)
+        return models.Model(result)
+
+    def write_phenotype(self, biosample_id, data_element_id,
+                        stream_generate_time, stream_data,
+                        duplicate_enabled=None, **kwargs):
+        """根据生物套件编号写入表型数据
+
+        Args:
+            biosample_id (str): 生物样品编号;
+            data_element_id (str): 数据元编号;
+            stream_generate_time (datetime): 数据流生成时间，
+                                             如：2021-03-02T10:00:00Z;
+            stream_data(dict): 数据流数据；
+            duplicate_enabled(boolean, 非必填): 允许重复写入；
+
+        Returns:
+            Model: 返回的表型数据流编号数据;
+        """
+        biosample_id = biosample_id.upper()
+        stream_data = json.dumps(stream_data)
+        data = dict()
+        data.update(kwargs)
+        data.update({
+            'biosample_id': biosample_id,
+            'data_element_id': data_element_id,
+            'stream_generate_time': stream_generate_time,
+            'stream_data': stream_data,
+            'duplicate_enabled': duplicate_enabled,
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.post(
+            '/datamall/phenotype/write', data=data, timeout=timeout)
         return models.Model(result)
 
     def get_data_items(self, namespace, biosample_id,
