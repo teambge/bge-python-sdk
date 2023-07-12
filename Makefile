@@ -13,8 +13,15 @@ build:
 # 单元测试
 test:
 	$(PIP) install pytest pytest-cov; \
-	chmod +x ./test_env.sh; \
-	./test_env.sh
+	grep -v '^#' .env; \
+	export $(grep -v '^#' .env | xargs); \
+	pytest -s --cov-config=./.coveragerc --cov-report html --cov-report xml --cov=./
+
+test-pro:
+	$(PIP) install pytest pytest-cov; \
+	grep -v '^#' .env-pro; \
+	export $(grep -v '^#' .env-pro | xargs); \
+	pytest -s --cov-config=./.coveragerc --cov-report html --cov-report xml --cov=./
 
 upload-test:
 	$(PIP) install twine; \
@@ -45,4 +52,4 @@ clean:
 		   tests/__pycache__/ \
 		   .bge/tmp/*
 
-.PHONY: test upload upload-test build install changelog clean
+.PHONY: test test-pro upload upload-test build install changelog clean
