@@ -1,27 +1,27 @@
 # BGE 开放平台 Makefile 工具
 
 PYTHON=`which python`
+PIP = `which pip`
 
 install:
 	$(PYTHON) setup.py install
 
 # 构建源码包
 build:
-	$(PYTHON) setup.py bdist_wheel
-	$(PYTHON) setup.py sdist
+	python -m build
 
 # 单元测试
 test:
-	pip install pytest pytest-cov; \
+	$(PIP) install pytest pytest-cov; \
 	chmod +x ./test_env.sh; \
 	./test_env.sh
 
 upload-test:
-	pip install twine; \
+	$(PIP) install twine; \
 	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
 upload:
-	pip install twine; \
+	$(PIP) install twine; \
 	twine upload dist/*
 
 changelog:
