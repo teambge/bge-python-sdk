@@ -1327,3 +1327,39 @@ class API(object):
         result = request.post(
             '/model/doc_upload', data=doc, timeout=timeout)
         return models.Model(result)
+
+    def send_sms(self, template, mobiles, **kwargs):
+        """发送短信
+
+        Args:
+            template (str): 短信模板;
+            mobiles (str): 手机号，多个手机号用逗号分割;
+
+        template：pay_code（积分消费通知短信）
+            pay_code(str): 消费验证码；
+
+        template: research_download_notice（科研数据下载提示短信）
+            org_name(str): 机构名称；
+            project_name(str): 科研调查标题名称；
+            applied_date(str): 申请数据日期；
+            expiry_date(str): 数据有效期日期；
+
+        template: microarray_delivery（芯片版发报告提示短信）
+            user_nick_name(str): 用户昵称；
+
+        Returns:
+            Model: 返回的表型数据流编号数据;
+        """
+        data = dict()
+        data.update(kwargs)
+        data.update({
+            'template': template,
+            'mobiles': mobiles,
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        request.post('/sms/send', data=data, timeout=timeout)
