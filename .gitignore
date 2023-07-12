@@ -15,3 +15,5 @@ test_env.sh
 .pytest_cache/
 .python-version
 htmlcov/
+.env
+.env_pro

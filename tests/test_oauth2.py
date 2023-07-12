@@ -7,22 +7,26 @@ import pytest
 
 class TestOAuth2:
 
-    def test_authorization_url_is_str(self, oauth2, redirect_uri):
+    def test_authorization_url_is_str(self, authorization_oauth2,
+                                      redirect_uri):
         """获取用户授权页面链接"""
-        url = oauth2.get_authorization_url(redirect_uri)
+        url = authorization_oauth2.get_authorization_url(redirect_uri)
         assert isinstance(url, str)
 
-    def test_invalid_code(self, oauth2, access_token):
+    def test_invalid_code(self, authorization_oauth2):
         """错误的用户授权 code 和 redirect_uri"""
         with pytest.raises(APIError) as e:
-            oauth2.exchange_authorization_code('code', 'http://test.cn')
+            authorization_oauth2.exchange_authorization_code(
+                'code',
+                'http://test.cn'
+            )
         assert e.value.code == 400
-        assert e.value.msg == u'非法请求: invalid_grant'
+        assert e.value.msg == u'错误的请求'
 
-    def test_invalid_access_token(self, oauth2):
+    def test_invalid_access_token(self, authorization_oauth2):
         """错误的 access_token"""
         access_token = 'demo'
-        api = oauth2.get_api(access_token)
+        api = authorization_oauth2.get_api(access_token)
         with pytest.raises(APIError) as e:
             api.get_user()
         assert e.value.code == 403

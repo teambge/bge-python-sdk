@@ -8,16 +8,18 @@ import pytest
 class TestVariant:
 
     @pytest.mark.parametrize('rsids', ['rs333', 'rs1,rs2'])
-    def test_valid_request(self, api, self_biosample_id, rsids):
+    def test_valid_request(self, authorization_api, self_biosample_id,
+                           rsids):
         # 获取不归属于自己的样品的变异数据
-        ret = api.get_variants(self_biosample_id, rsids)
+        ret = authorization_api.get_variants(self_biosample_id, rsids)
         assert isinstance(ret, list), u'成功返回数据的类型必须为列表'
 
     @pytest.mark.parametrize('rsids', ['rs333', 'rs1,rs2'])
-    def test_raise_errors(self, api, logger, other_biosample_id, rsids):
+    def test_raise_errors(self, authorization_api, logger,
+                          other_biosample_id, rsids):
         """获取不归属于自己的样品的变异数据"""
         with pytest.raises(APIError) as e:
-            api.get_variants(other_biosample_id, rsids)
+            authorization_api.get_variants(other_biosample_id, rsids)
         logger.debug(e.value)
         assert e.value.code == 41303
         assert e.value.msg == u'请提供本人的 biosample_id'
@@ -32,30 +34,33 @@ class TestVariant:
                   'rs70,rs71,rs72,rs73,rs74,rs75,rs76,rs77,rs78,rs79,rs80,r'
                   's81,rs82,rs83,rs84,rs85,rs86,rs87,rs88,rs89,rs90,rs91,rs'
                   '92,rs93,rs94,rs95,rs96,rs97,rs98,rs99,rs100,rs101'])
-    def test_too_many_rsids(self, api, logger, self_biosample_id, rsids):
+    def test_too_many_rsids(self, authorization_api, logger,
+                            self_biosample_id, rsids):
         """测试超出数量限制"""
         with pytest.raises(APIError) as e:
-            api.get_variants(self_biosample_id, rsids)
+            authorization_api.get_variants(self_biosample_id, rsids)
         logger.debug(e.value)
         assert e.value.code == 41001
         assert e.value.msg == u'参数错误'
 
     @pytest.mark.parametrize(
         'rsids', ['333', '55333,rs3', 'srs3', 'rs3,,rs34', 'rs3,,', ''])
-    def test_invalid_rsid(self, api, logger, self_biosample_id, rsids):
+    def test_invalid_rsid(self, authorization_api, logger,
+                          self_biosample_id, rsids):
         """测试格式错误的变异位点"""
         with pytest.raises(APIError) as e:
-            api.get_variants(self_biosample_id, rsids)
+            authorization_api.get_variants(self_biosample_id, rsids)
         logger.debug(e.value)
         assert e.value.code == 41001
         assert e.value.msg == u'参数错误'
 
     @pytest.mark.parametrize('biosample_id', ['demo', 'E-B112'])
-    def test_invalid_biosample_id(self, api, logger, biosample_id):
+    def test_invalid_biosample_id(self, authorization_api, logger,
+                                  biosample_id):
         """测试不存在或者格式异常的的样品编号"""
         rsids = 'rs333'
         with pytest.raises(APIError) as e:
-            api.get_variants(biosample_id, rsids)
+            authorization_api.get_variants(biosample_id, rsids)
         logger.debug(e.value)
-        assert e.value.code == 41302
-        assert e.value.msg == u'基因组报告不存在或未下机'
+        assert e.value.code == 41303
+        assert e.value.msg == u'请提供本人的 biosample_id'

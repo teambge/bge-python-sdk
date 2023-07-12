@@ -9,11 +9,11 @@ import pytest
 class TestModels:
 
     @pytest.mark.parametrize('attr', ['x'])
-    def test_unknown_attribute(self, api, logger, attr):
-        with pytest.raises(AttributeError) as e:
+    def test_unknown_attribute(self, logger, attr):
+        with pytest.raises(AttributeError):
             getattr(models.Model({}), attr)
 
-    def test_json(self, api, logger):
+    def test_json(self, logger):
         result = {
             "name": "Tom",
             "children": ["Lili", "Jay"],

@@ -11,13 +11,19 @@ import six
 
 
 ENDPOINT = os.environ.get('ENDPOINT')
-CLIENT_ID = os.environ.get('CLIENT_ID')
-CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
+
+# Authorizaion Code
+AUTHORIZATION_CLIENT_ID = os.environ.get('AUTHORIZATION_CLIENT_ID')
+AUTHORIZATION_CLIENT_SECRET = os.environ.get('AUTHORIZATION_CLIENT_SECRET')
 REDIRECT_URI = os.environ.get('REDIRECT_URI')
 AUTHORIZATION_EXTRA_QUERY = os.environ.get('AUTHORIZATION_EXTRA_QUERY')
 SELF_BIOSAMPLE_ID = os.environ.get('SELF_BIOSAMPLE_ID')
 SELF_META_BIOSAMPLE_ID = os.environ.get('SELF_META_BIOSAMPLE_ID')
 OTHER_BIOSAMPLE_ID = os.environ.get('OTHER_BIOSAMPLE_ID')
+
+# Client Credentials
+CREDENTIALS_CLIENT_ID = os.environ.get('CREDENTIALS_CLIENT_ID')
+CREDENTIALS_CLIENT_SECRET = os.environ.get('CREDENTIALS_CLIENT_SECRET')
 
 
 @pytest.fixture(scope='session')
@@ -26,8 +32,10 @@ def redirect_uri():
 
 
 @pytest.fixture(scope='session')
-def authorization_url(oauth2, redirect_uri):
-    authorization_url = oauth2.get_authorization_url(redirect_uri)
+def authorization_url(authorization_oauth2, redirect_uri):
+    authorization_url = authorization_oauth2.get_authorization_url(
+        redirect_uri
+    )
     return '&'.join((authorization_url, AUTHORIZATION_EXTRA_QUERY))
 
 
@@ -49,13 +57,19 @@ def logger():
 
 
 @pytest.fixture(scope='session')
-def oauth2():
-    return OAuth2(CLIENT_ID, CLIENT_SECRET, endpoint=ENDPOINT, max_retries=3)
+def authorization_oauth2():
+    return OAuth2(
+        AUTHORIZATION_CLIENT_ID,
+        AUTHORIZATION_CLIENT_SECRET,
+        endpoint=ENDPOINT,
+        max_retries=3
+    )
 
 
 @pytest.fixture(scope='session')
-def access_token(oauth2, authorization_code, redirect_uri):
-    token = oauth2.exchange_authorization_code(
+def authorization_access_token(authorization_oauth2, authorization_code,
+                               redirect_uri):
+    token = authorization_oauth2.exchange_authorization_code(
         authorization_code,
         redirect_uri
     )
@@ -63,8 +77,29 @@ def access_token(oauth2, authorization_code, redirect_uri):
 
 
 @pytest.fixture(scope='session')
-def api(oauth2, access_token):
-    return oauth2.get_api(access_token)
+def authorization_api(authorization_oauth2, authorization_access_token):
+    return authorization_oauth2.get_api(authorization_access_token)
+
+
+@pytest.fixture(scope='session')
+def credentials_oauth2():
+    return OAuth2(
+        CREDENTIALS_CLIENT_ID,
+        CREDENTIALS_CLIENT_SECRET,
+        endpoint=ENDPOINT,
+        max_retries=3
+    )
+
+
+@pytest.fixture(scope='session')
+def credentials_access_token(credentials_oauth2):
+    token = credentials_oauth2.get_credentials_token()
+    return token.access_token
+
+
+@pytest.fixture(scope='session')
+def credentials_api(credentials_oauth2, credentials_access_token):
+    return credentials_oauth2.get_api(credentials_access_token)
 
 
 @pytest.fixture(scope='session')
