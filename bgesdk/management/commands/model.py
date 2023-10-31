@@ -645,30 +645,30 @@ class Command(BaseCommand):
         output('[green]解读模型配置已保存至[/green] {}'.format(config_path))
 
     def _install_sdk(self):
-        with console.status("正在安装 bge-python-sdk", spinner="earth"):
-            config_path = self.get_model_config_path()
-            config = get_config_parser(config_path)
-            section_name = DEFAULT_MODEL_SECTION
-            model_id = config_get(config.get, section_name, 'model_id')
-            runtime = config_get(config.get, section_name, 'runtime')
-            client = self._get_docker_client()
-            command = (
-                'pip install --cache-dir /tmp/.cache/ --no-deps '
-                'bge-python-sdk pimento requests_toolbelt -t /code/lib'
-            )
-            image_name = RUNTIMES[runtime]
-            self._get_or_pull_image(client, image_name)
-            output('开始安装模型依赖包...')
-            command = ('sh -c "{}"').format(command)
-            container_name = generate_container_name(model_id)
-            self._force_remove_container(client, container_name)
-            self._run_by_container(
-                client,
-                image_name,
-                command,
-                container_name
-            )
-            output('[green]安装完成[/green]')
+        output("正在安装 bge-python-sdk")
+        config_path = self.get_model_config_path()
+        config = get_config_parser(config_path)
+        section_name = DEFAULT_MODEL_SECTION
+        model_id = config_get(config.get, section_name, 'model_id')
+        runtime = config_get(config.get, section_name, 'runtime')
+        client = self._get_docker_client()
+        command = (
+            'pip install --cache-dir /tmp/.cache/ --no-deps '
+            'bge-python-sdk pimento requests_toolbelt -t /code/lib'
+        )
+        image_name = RUNTIMES[runtime]
+        self._get_or_pull_image(client, image_name)
+        output('开始安装模型依赖包...')
+        command = ('sh -c "{}"').format(command)
+        container_name = generate_container_name(model_id)
+        self._force_remove_container(client, container_name)
+        self._run_by_container(
+            client,
+            image_name,
+            command,
+            container_name
+        )
+        output('[green]安装完成[/green]')
 
     def upload_model_expfs(self, args):
         home = get_home()
