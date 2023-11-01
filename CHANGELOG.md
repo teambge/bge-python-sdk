@@ -1,3 +1,13 @@
+## [0.5.3](https://github.com/teambge/bge-python-sdk/compare/v0.5.2...v0.5.3) (2023-11-01)
+
+
+### Bug Fixes
+
+* **model:** 修复发布模型命令后出现模型灰度环境运行提示 main.py 无运行权限的问题 ([8968149](https://github.com/teambge/bge-python-sdk/commit/896814957335d05a96d5a78792a4822b74265246))
+* **model:** 修复模型初始化脚手架命令出错的问题 ([5b40c8e](https://github.com/teambge/bge-python-sdk/commit/5b40c8ed27fa894ff1d565788da0e977ca8b8f41))
+
+
+
 ## [0.5.2](https://github.com/teambge/bge-python-sdk/compare/v0.5.1...v0.5.2) (2023-07-12)
 
 
