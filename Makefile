@@ -8,7 +8,8 @@ install:
 
 # 构建源码包
 build:
-	python -m build
+	$(PYTHON) setup.py bdist_wheel; \
+	$(PYTHON) setup.py sdist
 
 # 单元测试
 test:

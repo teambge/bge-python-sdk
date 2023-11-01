@@ -1,3 +1,7 @@
+## [0.5.4](https://github.com/teambge/bge-python-sdk/compare/v0.5.3...v0.5.4) (2023-11-01)
+
+
+
 ## [0.5.3](https://github.com/teambge/bge-python-sdk/compare/v0.5.2...v0.5.3) (2023-11-01)
 
 

@@ -859,6 +859,7 @@ class Command(BaseCommand):
                     continue
                 zipinfo = zipfile.ZipInfo(zip_relpath)
                 zipinfo.external_attr = 0o755 << 16
+                zipinfo.compress_type = ZIP_COMPRESSION
                 with open(filepath, 'rb') as f:
                     ziph.writestr(zipinfo, f.read())
                 output('\t{}'.format(zip_relpath))
@@ -869,6 +870,7 @@ class Command(BaseCommand):
                 content = python_minifier.minify(content)
                 zipinfo = zipfile.ZipInfo(zip_relpath)
                 zipinfo.external_attr = 0o755 << 16
+                zipinfo.compress_type = ZIP_COMPRESSION
                 ziph.writestr(zipinfo, content)
                 output('\t{} [green]MINIFIED[/green]'.format(zip_relpath))
 
