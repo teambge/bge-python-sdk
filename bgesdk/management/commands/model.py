@@ -857,18 +857,19 @@ class Command(BaseCommand):
                 filepath = total_files[zip_relpath]
                 if zip_relpath in minify_relpaths:
                     continue
-                ziph.write(filepath, zip_relpath)
+                zipinfo = zipfile.ZipInfo(zip_relpath)
+                zipinfo.external_attr = 0o755 << 16
+                with open(filepath, 'rb') as f:
+                    ziph.writestr(zipinfo, f.read())
                 output('\t{}'.format(zip_relpath))
             for zip_relpath in sorted(minify_relpaths):
                 filepath = total_files[zip_relpath]
                 with open(filepath, 'r') as fp:
                     content = fp.read()
-                with tempfile.NamedTemporaryFile(mode='w') as temp_fp:
-                    content = python_minifier.minify(content)
-                    temp_fp.write(content)
-                    temp_fp.flush()
-                    temp_fp.seek(0)
-                    ziph.write(temp_fp.name, zip_relpath)
+                content = python_minifier.minify(content)
+                zipinfo = zipfile.ZipInfo(zip_relpath)
+                zipinfo.external_attr = 0o755 << 16
+                ziph.writestr(zipinfo, content)
                 output('\t{} [green]MINIFIED[/green]'.format(zip_relpath))
 
     def get_ignore_patterns(self, home):
