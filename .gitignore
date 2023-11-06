@@ -16,4 +16,4 @@ test_env.sh
 .python-version
 htmlcov/
 .env
-.env_pro
+.env_*

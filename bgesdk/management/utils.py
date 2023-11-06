@@ -131,13 +131,14 @@ def get_config_parser(path):
     return config_parser
 
 
-def output_json(data, cls=None):
+def output_json(data, indent=4, sort_keys=True, ensure_ascii=False,
+                cls=None):
     syntax = Syntax(
         json.dumps(
             data,
-            indent=4,
-            sort_keys=True,
-            ensure_ascii=False,
+            indent=indent,
+            sort_keys=sort_keys,
+            ensure_ascii=ensure_ascii,
             cls=cls
         ),
         lexer='JSON',

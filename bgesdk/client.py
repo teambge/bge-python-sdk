@@ -1102,15 +1102,18 @@ class API(object):
         return models.Model(result)
 
     def deploy_model(self, model_id, object_name=None, runtime=None,
-                     memory_size=None, timeout=None, **kwargs):
+                     memory_size=None, cpu=None, disk_size=None,
+                     timeout=None, **kwargs):
         """部署模型
 
         Args:
             model_id (str): 模型编号。
             object_name (str): 模型源代码文件阿里云 OSS 对象路径。
-            runtime (str, optional): 运行环境版本。默认值: python3。
-            memory_size (int, optional): 内存占用量,单位: MB。默认: 128MB。
-            timeout (int, 非必填): 模型运行超时时间,单位: 秒。默认: 900。
+            runtime (str, 非必填): 运行环境版本。默认值: python3。
+            memory_size (int, 非必填): 内存占用量,单位: MB。默认: 128MB。
+            cpu(float, 非必填): vCPU 核心数。默认：0.05。
+            disk_size(int, 非必填): 函数计算磁盘规格，单位：MB。默认：512。
+            timeout (int, 非必填): 模型运行超时时间，单位: 秒。默认: 900。
 
         Returns:
             Model: 任务id,时间和状态;
@@ -1121,6 +1124,8 @@ class API(object):
             'model_id': model_id,
             'runtime': runtime,
             'memory_size': memory_size,
+            'cpu': cpu,
+            'disk_size': disk_size,
             'timeout': timeout,
             'object_name': object_name
         })
