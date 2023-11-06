@@ -1,3 +1,12 @@
+# [0.6.0](https://github.com/teambge/bge-python-sdk/compare/v0.5.4...v0.6.0) (2023-11-06)
+
+
+### Features
+
+* **model:** 升级模型命令行工具和部署接口等，支持 python3.9 和 3.10 等新特性 ([370dc88](https://github.com/teambge/bge-python-sdk/commit/370dc881bc93f775f3aad50f75eb7e4793630a4e))
+
+
+
 ## [0.5.4](https://github.com/teambge/bge-python-sdk/compare/v0.5.3...v0.5.4) (2023-11-01)
 
 
