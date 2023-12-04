@@ -633,7 +633,7 @@ class API(object):
         result['result'] = [models.Model(item) for item in result['result']]
         return result
 
-    def get_upload_token(self, **kwargs):
+    def get_upload_token(self, region_id=None, internal=False, **kwargs):
         """获取文件上传授权
         
         获取的授权仅包括当前目录(不含子目录)下的文件读、写权限;
@@ -644,15 +644,21 @@ class API(object):
         timeout = self.timeout
         verbose = self.verbose
         max_retries = self.max_retries
+        data = {}
+        data.update(kwargs)
+        data.update({
+            'region_id': region_id,
+            'internal': internal,
+        })
         request = HTTPRequest(
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
-        result = request.post('/sts/token', data=kwargs, timeout=timeout)
+        result = request.post('/sts/token', data=data, timeout=timeout)
         return models.Model(result)
 
     def upload(self, filename, file_or_string, part_size=None,
                multipart_threshold=None, multipart_num_threads=None,
-               cmk_id=None):
+               cmk_id=None, region_id=None, internal=False):
         """上传文件
 
         Args:
@@ -663,11 +669,16 @@ class API(object):
             multipart_num_threads: 分片上传缺省线程数, 默认 4;
             cmk_id (str): 阿里云 KMS 服务用户主密钥 ID,加密上传时提供 CMK ID 即可;
                           提供 cmk_id 后不支持分片上传;
+            region_id(str): 阿里云 OSS 区域编号，默认 oss-cn-shenzhen；
+            internal(bool): 是否使用内部 VPN 域名，默认 False；
 
         Returns:
             object_name: 文件的 OSS 对象名;
         """
-        token = self.get_upload_token()
+        token = self.get_upload_token(
+            region_id=region_id,
+            internal=internal
+        )
         return self._upload(
             token,
             filename,
@@ -680,7 +691,7 @@ class API(object):
 
     def batch_upload(self, files, part_size=None,
                      multipart_threshold=None, multipart_num_threads=None,
-                     cmk_id=None):
+                     cmk_id=None, region_id=None, internal=False):
         """批量上传文件
 
         Args:
@@ -689,6 +700,8 @@ class API(object):
             multipart_threshold(num): 上传数据大于或等于该值时分片上传, 默认 100M;
             multipart_num_threads: 分片上传缺省线程数, 默认 4;
             cmk_id (str): 阿里云 KMS 服务用户主密钥 ID,加密上传时提供 CMK ID 即可;
+            region_id(str): 阿里云 OSS 区域编号，默认 oss-cn-shenzhen；
+            internal(bool): 是否使用内部 VPN 域名，默认 False；
 
         Returns:
             object_name: 文件的 OSS 对象名;
@@ -698,7 +711,10 @@ class API(object):
         object_names = []
         if isinstance(files, (list, tuple)):
             files = [files]
-        token = self.get_upload_token()
+        token = self.get_upload_token(
+            region_id=region_id,
+            internal=internal
+        )
         for file_obj in files:
             if not isinstance(file_obj, FileItem):
                 continue
@@ -721,7 +737,7 @@ class API(object):
 
     def upload_dir(self, dirpath, part_size=None,
                    multipart_threshold=None, multipart_num_threads=None,
-                   cmk_id=None):
+                   cmk_id=None, region_id=None, internal=False):
         """上传目录下的文件(不递归上传子文件夹中文件)
 
         仅上传目录中的文件,软链接、符号链接、文件夹均不会上传至平台。
@@ -736,7 +752,10 @@ class API(object):
         Returns:
             object_names: 上传的文件 OSS 对象名列表;
         """
-        token = self.get_upload_token()
+        token = self.get_upload_token(
+            region_id=region_id,
+            internal=internal
+        )
         object_names = []
         for filename in os.listdir(dirpath):
             filepath = join(dirpath, filename)

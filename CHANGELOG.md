@@ -1,3 +1,12 @@
+## [0.6.1](https://github.com/teambge/bge-python-sdk/compare/v0.6.0...v0.6.1) (2023-12-04)
+
+
+### Features
+
+* **sts:** 增加 STS 令牌获取可以选择 OSS 区域和是否使用 VPC 域名的参数功能 ([f03cc7e](https://github.com/teambge/bge-python-sdk/commit/f03cc7e66f9d5fd75315c4820ae62e1c47a2e058))
+
+
+
 # [0.6.0](https://github.com/teambge/bge-python-sdk/compare/v0.5.4...v0.6.0) (2023-11-06)
 
 

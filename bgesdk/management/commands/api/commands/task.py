@@ -21,7 +21,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 class Command(BaseCommand):
 
     order = 14
-    help='获取 BGE 私有平台任务结果。'
+    help = '获取 BGE 私有平台任务结果。'
 
     def add_arguments(self, parser):
         parser.add_argument(

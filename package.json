@@ -1,6 +1,6 @@
 {
     "name": "bge-python-sdk",
-    "version": "0.6.0",
+    "version": "0.6.1",
     "scripts": {
         "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
         "init_changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"

@@ -26,7 +26,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 class Command(BaseCommand):
 
     order = 12
-    help='上传目录下文件（不递归上传子目录中文件）。'
+    help = '上传目录下文件（不递归上传子目录中文件）。'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -57,6 +57,16 @@ class Command(BaseCommand):
             help='阿里云 KMS 服务密钥 ID，提供时代表使用加密方式上传文件。'
         )
         parser.add_argument(
+            '-r',
+            '--region_id',
+            help='阿里云 OSS 区域编号，默认 oss-cn-shenzhen。'
+        )
+        parser.add_argument(
+            '--internal',
+            action="store_true",
+            help='是否使用内部 VPC 域名。'
+        )
+        parser.add_argument(
             '-t',
             '--access_token',
             type=str,
@@ -77,6 +87,8 @@ class Command(BaseCommand):
         cmk_id = args.cmk_id
         part_size = args.part_size
         multipart_threshold = args.multipart_threshold
+        region_id = args.region_id
+        internal = args.internal
         files = []
         for filename in os.listdir(dirpath):
             filepath = join(dirpath, filename)
@@ -93,7 +105,9 @@ class Command(BaseCommand):
                     part_size=part_size * 1024 * 1024,
                     multipart_threshold=multipart_threshold * 1024 * 1024,
                     multipart_num_threads=args.multipart_num_threads,
-                    cmk_id=cmk_id
+                    cmk_id=cmk_id,
+                    region_id=region_id,
+                    internal=internal,
                 )
             except APIError as e:
                 output('[red]请求失败：[/red]')

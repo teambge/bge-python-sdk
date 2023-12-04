@@ -21,7 +21,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 class Command(BaseCommand):
 
     order = 9
-    help='获取套件外部编号对应表。'
+    help = '获取套件外部编号对应表。'
 
     def add_arguments(self, parser):
         parser.add_argument(

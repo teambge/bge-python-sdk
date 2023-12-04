@@ -29,7 +29,7 @@ NOT_PARAM_FIELDS = (
 class Command(BaseCommand):
 
     order = 2
-    help='获取样品信息。'
+    help = '获取样品信息。'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -69,7 +69,7 @@ class Command(BaseCommand):
             '--statuses',
             type=str,
             help='数据状态，详情见 BGE 开放平台文档 https://api.bge.genomics.cn/doc/#/ot'
-                'hers/appendix?id=样品状态编码表'
+                 'hers/appendix?id=样品状态编码表'
         )
         parser.add_argument(
             '--require_files',

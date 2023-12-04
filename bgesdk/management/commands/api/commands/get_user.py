@@ -21,7 +21,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 class Command(BaseCommand):
 
     order = 1
-    help='获取用户信息。'
+    help = '获取用户信息。'
 
     def add_arguments(self, parser):
         parser.add_argument(
