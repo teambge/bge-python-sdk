@@ -2,7 +2,7 @@ pipeline {
   agent any
 
   environment {
-    JAVA_HOME = '/usr/lib/jvm/jdk-11.0.2'
+    JAVA_HOME = '/home/ubuntu/jenkins_home/jdk-17.0.2'
   }
 
   stages {
