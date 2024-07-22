@@ -890,18 +890,30 @@ class API(object):
         timeout = self.timeout
         try:
             with requests.get(url, stream=True, timeout=timeout) as r:
-                total = int(r.headers['content-length'])
-                for chunk in r.iter_content(chunk_size):
-                    size += len(chunk)
-                    eq_size = int(size * prog_size / total)
-                    equal_s = '=' * eq_size
-                    blank_s = ' ' * (prog_size - eq_size)
-                    progress = '>'.join((equal_s, blank_s))
-                    percent = '%.2f%%' % float(size / total * 100)
-                    sys.stdout.write(
-                        '\r\t%s [%s]' % (percent.rjust(7), progress)
-                    )
-                    fp.write(chunk)
+                total = r.headers.get('content-length')
+                if total is not None:
+                    total = int(total)
+                    for chunk in r.iter_content(chunk_size):
+                        size += len(chunk)
+                        eq_size = int(size * prog_size / total)
+                        equal_s = '=' * eq_size
+                        blank_s = ' ' * (prog_size - eq_size)
+                        progress = '>'.join((equal_s, blank_s))
+                        percent = '%.2f%%' % float(size / total * 100)
+                        sys.stdout.write(
+                            '\r\t%s [%s]' % (percent.rjust(7), progress)
+                        )
+                        sys.stdout.flush()
+                        fp.write(chunk)
+                else:
+                    for chunk in r.iter_content(chunk_size):
+                        size += len(chunk)
+                        sys.stdout.write(
+                            '\r\t已下载文件：%s' % human_byte(size).ljust(7)
+                        )
+                        sys.stdout.flush()
+                        fp.write(chunk)
+                sys.stdout.write('\n')
                 flush_func = getattr(fp, 'flush', None)
                 if flush_func:
                     flush_func()

@@ -1,3 +1,12 @@
+## [0.6.2](https://github.com/teambge/bge-python-sdk/compare/v0.6.1...v0.6.2) (2024-07-22)
+
+
+### Bug Fixes
+
+* **download:** 修复下载方法中在下载文件 HTTP 请求未返回 Content-Length 头部导致下载方法失败的问题 ([5a33e8b](https://github.com/teambge/bge-python-sdk/commit/5a33e8bfa7174510eeb2ab1951bebc3220e067a3))
+
+
+
 ## [0.6.1](https://github.com/teambge/bge-python-sdk/compare/v0.6.0...v0.6.1) (2023-12-04)
 
 
