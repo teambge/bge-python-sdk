@@ -74,9 +74,9 @@ def alive(self):
 
 class OAuth2(object):
     """OAuth2 授权客户端类。
-    
+
     管理关于 OAuth2 相关接口的调用,包括获取授权页面地址、授权码交换访问令牌等;
-    
+
     Args:
         client_id (字符串): 第三方客户端 client_id;
         client_secret (字符串): 第三方客户端 client_secret;
@@ -278,6 +278,73 @@ class API(object):
         result = request.get('/profile', params=params, timeout=timeout)
         return models.Model(result)
 
+    def get_overview(
+            self,
+            idcard=None,
+            phone=None,
+            biosample_id=None,
+            project_id=None,
+            external_sample_id=None,
+            **kwargs,
+        ):
+        """获取用户数据概览
+
+        Args:
+            idcard (str, 非必填): 身份证；
+            phone (str, 非必填): 手机号；提供了参数 phone，禁止再提供 biosample_id、
+                project_id、external_sample_id；
+            biosample_id (str, 非必填): BGE 样本编号；提供了参数 biosample_id，禁
+                止再提供 phone、project_id、external_sample_id；
+            project_id (str, 非必填): BGE 项目编号；提供了参数 project_id 必须提
+                供 external_sample_id，且 phone 和 biosample_id 必须为空；
+            external_sample_id (str, 非必填): 外部样本编号；提供了参数
+                external_sample_id 必须提供 project_id，且 phone 和
+                biosample_id 必须为空；
+
+        Returns:
+            Model: 用户数据概览;
+        """
+        data = {}
+        data.update(kwargs)
+        if phone and (biosample_id or project_id or external_sample_id):
+            raise BGEError(
+                'If the phone parameter is provided, the biosample_id, '
+                'project_id, and external_sample_id are prohibited.'
+            )
+        elif biosample_id and (phone or project_id or external_sample_id):
+            raise BGEError(
+                'If the biosample_id parameter is provided, the phone, '
+                'project_id, and external_sample_id are prohibited.'
+            )
+        else:
+            if (not project_id and external_sample_id) or \
+                    (project_id and not external_sample_id):
+                raise BGEError(
+                    'The project_id and external_sample_id must be provided'
+                    ' together.'
+                )
+            if project_id and external_sample_id and (phone or biosample_id):
+                raise BGEError(
+                    'The provided parameters external_sample_id must provid'
+                    'e the project_id, and the phone and biosample_id must '
+                    'be empty.'
+                )
+        data.update({
+            'idcard': idcard,
+            'phone': phone,
+            'biosample_id': biosample_id,
+            'project_id': project_id,
+            'external_sample_id': external_sample_id,
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.post('/user/overview', data=data, timeout=timeout)
+        return models.Model(result)
+
     def get_variants(self, biosample_id, rsids, **params):
         """根据rsid查询变异位点信息
 
@@ -290,9 +357,9 @@ class API(object):
             list: 变异位点信息;
         """
         if biosample_id:
-            biosample_id = biosample_id.upper()
+            biosample_id = biosample_id.upper().strip()
         params.update({
-            'rsids': rsids,
+            'rsids': rsids.strip(),
             'biosample_id': biosample_id
         })
         timeout = self.timeout
@@ -302,17 +369,14 @@ class API(object):
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
         result = request.get('/variants', params=params, timeout=timeout)
-        data = []
-        for item in result:
-            data.append(models.Model(item))
-        return data
+        return models.ListModel(result)
 
     def professional_variant(self, biosample_id, only_variant_site=True,
                              regions=None, bed_file=None):
         """专业级变异数据接口
-        
+
         regions 与 bed_file 须且提供其中之一
-        
+
         Args:
             biosample_id(str): 生物样品编号;
             only_variant_site(bool): 是否仅输出变异位置,默认为True;
@@ -402,12 +466,7 @@ class API(object):
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
         result = request.get('/samples', params=params, timeout=timeout)
-        result = models.Model(result)
-        data = []
-        for item in result['result']:
-            data.append(models.Model(item))
-        result['result'] = data
-        return result
+        return models.Model(result)
 
     def get_sample(self, biosample_id, require_files=None):
         """获取样品
@@ -458,7 +517,7 @@ class API(object):
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
         result = request.get(url, params=params, timeout=timeout)
-        return [models.Model(item) for item in result]
+        return models.ListModel(result)
 
     def register_sample(self, external_sample_id, biosample_site,
                         project_id, **kwargs):
@@ -550,14 +609,14 @@ class API(object):
             '/microbiome/taxon_abundance', params=params, timeout=timeout)
         # TODO: upgrade in the future
         # 暂时特殊处理此接口,统一丰度数据的返回方式
-        ret = models.Model({})
+        ret = dict()
         ret['count'] = count = pagination['count']
         next_page = pagination['page'] + 1
         if count == 0:
             next_page = None
         ret['next_page'] = next_page
-        ret['result'] = [models.Model(item) for item in result]
-        return ret
+        ret['result'] = result
+        return models.Model(ret)
 
     def get_func_abundance(self, biosample_id, catalog, ids=None, limit=50,
                            next_page=None, **params):
@@ -591,9 +650,7 @@ class API(object):
         request.set_authorization(self.token_type, self.access_token)
         result = request.get(
             '/microbiome/func_abundance', params=params, timeout=timeout)
-        result = models.Model(result)
-        result['result'] = [models.Model(item) for item in result['result']]
-        return result
+        return models.Model(result)
 
     def get_gene_abundance(self, biosample_id, catalog, data_type, ids=None,
                            limit=None, next_page=None, **params):
@@ -629,13 +686,11 @@ class API(object):
         request.set_authorization(self.token_type, self.access_token)
         result = request.get(
             '/microbiome/gene_abundance', params=params, timeout=timeout)
-        result = models.Model(result)
-        result['result'] = [models.Model(item) for item in result['result']]
-        return result
+        return models.Model(result)
 
     def get_upload_token(self, region_id=None, internal=False, **kwargs):
         """获取文件上传授权
-        
+
         获取的授权仅包括当前目录(不含子目录)下的文件读、写权限;
 
         Returns:
@@ -733,7 +788,7 @@ class API(object):
             sys.stdout.write('\n\n')
             sys.stdout.flush()
             object_names.append(object_name)
-        return object_names
+        return models.ListModel(object_names)
 
     def upload_dir(self, dirpath, part_size=None,
                    multipart_threshold=None, multipart_num_threads=None,
@@ -774,7 +829,7 @@ class API(object):
             sys.stdout.write('\n\n')
             sys.stdout.flush()
             object_names.append(object_name)
-        return object_names
+        return models.ListModel(object_names)
 
     def _upload(self, token, filename, file_or_string, part_size=None,
                 multipart_threshold=None, multipart_num_threads=None,
@@ -877,6 +932,8 @@ class API(object):
                                  domestic;
             chunk_size(int): 下载块大小
             expiration_time (int, 非必填): 下载地址过期时间,默认值 600s;
+        Returns:
+            None
         """
         inst = self.get_download_url(
             object_name, region=None, expiration_time=expiration_time,
@@ -922,6 +979,52 @@ class API(object):
         except Exception as e:
             raise BGEError(e)
 
+    def ferry_to_oss(self, account, password, project_no, biosample_cnt,
+                     included_filename_exts=None, sample_names=None,
+                     action=None, **kwargs):
+        """下载科服文件转存至 BGE OSS
+
+        Args:
+            account (str): 华大科技账号；
+            password(str): 华大科技密码；
+            project_no (str): 华大科技项目编号；
+            biosample_cnt(int): 样本数，必须大于或等于 0；接口将通过计算下载文件中样
+                本名（参考参数 sample_names 解释）去重后与接口提供参数对比，数量无误
+                才会下载文件；
+            included_filename_exts (str, 非必填): 下载的文件后缀名可选范围：.txt、
+                .xls、.pdf、.tar.gz、.tar.gz.md5、.fq.gz，默认包含全部可选后缀，
+                多个后缀用英文逗号分割，如: .txt,.pdf；
+            sample_names (str, 非必填)：样品名，将从过滤后将要下载的文件中，使用样本
+                名过滤所有 .fq.gz 的文件；样品名为要下载文件中文件名为 *_1.fq.gz 或
+                者 *_2.fq.gz 的文件, 如 E-V20000006992A_1.fq.gz 文件的样品名即
+                为 E-V20000006992A，多个样本名用逗号分割；
+            action (str, 非必填)：动作名，可选值：restart，如果接口调用包含
+                参数 action=restart，接口将使用接口调用的参数重新启动一个新的任务（
+                如果相同参数的任务已经在运行，将无法重新启动任务，且接口将报错）；
+        Returns:
+            Model: 科服文件下载转存结果
+        """
+        data = {}
+        data.update(kwargs)
+        data.update({
+            'account': account,
+            'password': password,
+            'project_no': project_no,
+            'biosample_cnt': biosample_cnt,
+            'included_filename_exts': included_filename_exts,
+            'sample_names': sample_names,
+            'action': action
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.post(
+            '/ferry/download_to_oss', data=data, timeout=timeout)
+        return models.Model(result)
+
     def aggregate_omics_data(self, data_element_id, time_dimension, start_time,
                              end_time=None, biosample_id=None,
                              interval=1, periods=100, **kwargs):
@@ -936,7 +1039,7 @@ class API(object):
             biosample_id (str, 非必填): 生物样品编号,客户端模式下为必填;
             interval (int, 非必填): 聚合时间维度间隔,默认:1
             periods (int, 非必填): 聚合时间维度返回数,默认:100,最大值: 100
-        
+
         Returns:
             Model: 返回的聚合数据
         """
@@ -968,8 +1071,7 @@ class API(object):
                          sort_direction=None, limit=100, next_page=None,
                          **kwargs):
         """返回查询数据流
-        
-        
+
         Args:
             biosample_id (str, 非必填): 生物样品编号,客户端模式下为必填;
             start_time (str, 非必填): 数据流生成时间的起始时间
@@ -977,7 +1079,7 @@ class API(object):
             sort_direction (str, 非必填): 排序方式,默认: desc
             limit (int, 非必填): 每页返回数量,默认:100
             next_page (str, 非必填): 下一页参数
-        
+
         Returns:
             Model: 返回的数据流数据
         """
@@ -1340,7 +1442,7 @@ class API(object):
 
     def upload_model_doc(self, doc_tab, model_id, doc_content):
         """上传模型文档
-        
+
         Args:
             doc_tab (str): 文档所在的 tab。
             model_id (str): 模型编号。
@@ -1399,3 +1501,65 @@ class API(object):
             self.endpoint, max_retries=max_retries, verbose=verbose)
         request.set_authorization(self.token_type, self.access_token)
         request.post('/sms/send', data=data, timeout=timeout)
+
+    def applet_url(self, code, path=None, query=None, **kwargs):
+        """小程序链接
+
+        Args:
+            code (字符串): BGE 平台微信应用中控所对应的编号(平台后台配置，需管理员处理）;
+            path (字符串，非必填): 通过 URL Link 进入的小程序页面路径，必须是已经发布的
+                小程序存在的页面，不可携带 query 。path 为空时会跳转小程序主页;
+            query (字符串，非必填): 通过 URL Link 进入小程序时的query，最大1024个字符，
+                只支持数字，大小写英文以及部分特殊字符：!#$&’()*+,/:;=?@-._~%;
+
+        Returns:
+            Model: 返回的小程序链接数据;
+        """
+        data = dict()
+        data.update(kwargs)
+        data.update({
+            'code': code,
+            'path': path,
+            'query': query,
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.post(
+            '/service/wechat/applet/url', data=data, timeout=timeout)
+        return models.Model(result)
+
+    def verify_id_meta(self, idcard, realname, phone=None, **kwargs):
+        """身份要素核验
+
+        传入姓名和身份证号，通过权威数据源验证其真实性和一致性。
+        传入手机号、姓名、身份证号，通过权威数据源验证其真实性和一致性，如果不一致，返回不一致
+        的原因。
+
+        Args:
+            idcard (字符串): 身份证;
+            realname (字符串): 真名;
+            phone (字符串，非必填): 手机号;
+
+        Returns:
+            Model: 返回的身份要素核验结果;
+        """
+        data = dict()
+        data.update(kwargs)
+        data.update({
+            'idcard': idcard,
+            'realname': realname,
+            'phone': phone,
+        })
+        timeout = self.timeout
+        verbose = self.verbose
+        max_retries = self.max_retries
+        request = HTTPRequest(
+            self.endpoint, max_retries=max_retries, verbose=verbose)
+        request.set_authorization(self.token_type, self.access_token)
+        result = request.post(
+            '/service/verify/id_meta', data=data, timeout=timeout)
+        return models.Model(result)
