@@ -615,6 +615,11 @@ class Command(BaseCommand):
                 sys.exit(1)
             else:
                 output('[red]已存在[/red]')
+        readme_path = join(bge_dir, 'README')
+        if not exists(readme_path):
+            open(readme_path, 'w').write('BGE Python Model')
+        if not exists(model_config_path):
+            open(model_config_path, 'w').write(MODEL_CONFIG_TEMPLATE)
         model_config_path = join(scaffold_dir, 'model.ini')
         output(CREATE_MESSAGE.format(model_config_path))
         if not exists(model_config_path):
@@ -1552,6 +1557,9 @@ class Command(BaseCommand):
         if not exists(config_dir) and Confirm.ask(
                 '是否创建模型 .bge 目录？'):
             os.mkdir(config_dir)
+        readme_path = join(config_dir, 'README')
+        if not exists(readme_path):
+            open(readme_path, 'w').write('BGE Python Model')
         if not exists(model_config_path):
             output('[red]model.ini 文件不存在，请确认当前是否为模型项目根目录。[/red]')
             sys.exit(1)
