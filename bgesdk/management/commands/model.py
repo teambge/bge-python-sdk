@@ -808,8 +808,10 @@ class Command(BaseCommand):
             ratio = (memory_size / 1024) / cpu
             if ratio < 1 or ratio > 4:
                 ratio = '%.2f' % ratio
-                output(f'[red]vCPU 大小（核）与内存大小（GB）的比值必须在 1:1 到 1:4 之间，'
-                       f'当前为 {ratio}，请重新选择[/red]')
+                output(
+                    '[red]vCPU 大小（核）与内存大小（GB）的比值必须在 1:1 到 1:4 之间，'
+                    '当前为 {}，请重新选择[/red]'.format(ratio)
+                )
                 qprompt.pause()
                 continue
             break
@@ -1003,21 +1005,23 @@ class Command(BaseCommand):
         try:
             self._deploy_model_code(api, model_id, object_name, **params)
         except Exception as e:
-            output(f'[red] 上传部署模型代码到模型 {model_id} 失败...[/red]')
+            output('[red] 上传部署模型代码到模型 {} 失败...[/red]'.format(model_id))
             output_syntax(str(e))
         if not with_mirrors or not mirror_models:
             return
         if not Confirm.ask(
-                f'是否上传部署模型源码到镜像模型 {mirror_models} 中？'):
+                '是否上传部署模型源码到镜像模型 {} 中？'.format(mirror_models)):
             output('[yellow]已取消...[/yellow]')
             return
         output('\n\n')
         for idx, model_id in enumerate(mirror_models.split(','), start=1):
-            output(f'[{idx}] 开始上传模型源码到镜像模型 {model_id}...')
+            output('[{}] 开始上传模型源码到镜像模型 {}...'.format(idx, model_id))
             try:
                 self._deploy_model_code(api, model_id, object_name, **params)
             except Exception as e:
-                output(f'[red] 上传部署模型代码到模型 {model_id} 失败...[/red]')
+                output(
+                    '[red] 上传部署模型代码到模型 {} 失败...[/red]'.format(model_id)
+                )
                 output_syntax(str(e))
             output('\n\n')
 
@@ -1170,20 +1174,20 @@ class Command(BaseCommand):
         try:
             self._publish_model(api, model_id, message)
         except Exception as e:
-            output(f'[red] 发布模型 {model_id} 失败...[/red]')
+            output('[red] 发布模型 {} 失败...[/red]'.format(model_id))
             output_syntax(str(e))
         if not with_mirrors or not mirror_models:
             return
-        if not Confirm.ask(f'是否同时发布镜像模型 {mirror_models} ？'):
+        if not Confirm.ask('是否同时发布镜像模型 {} ？'.format(mirror_models)):
             output('[yellow]已取消...[/yellow]')
             return
         output('\n\n')
         for idx, model_id in enumerate(mirror_models.split(','), start=1):
-            output(f'[{idx}] 开始发布镜像模型 {model_id}...')
+            output('[{}] 开始发布镜像模型 {}...'.format(idx, model_id))
             try:
                 self._publish_model(api, model_id, message)
             except Exception as e:
-                output(f'[red] 发布模型 {model_id} 失败...[/red]')
+                output('[red] 发布模型 {} 失败...[/red]'.format(model_id))
                 output_syntax(str(e))
             output('\n\n')
 
@@ -1564,7 +1568,7 @@ class Command(BaseCommand):
                     sort_keys=True,
                     ensure_ascii=False,
                 ))
-            output(f'[green]模型返回值已输出至：{output_path}[/green]')
+            output('[green]模型返回值已输出至：{}[/green]'.format(output_path))
 
     def get_model_config_path(self, home=None):
         if home is None:
