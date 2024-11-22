@@ -232,6 +232,12 @@ class Command(BaseCommand):
             default=home,
             help='脚手架项目生成的父级目录，默认为当前目录。'
         )
+        init_p.add_argument(
+            '-x',
+            '--dockerproxy',
+            type=str,
+            help='docker 镜像代理域名。'
+        )
         init_p.set_defaults(method=self.init_scaffold, parser=init_p)
 
         # 模型配置
@@ -287,6 +293,12 @@ class Command(BaseCommand):
             action='store_true',
             help='是否强制重新安装依赖包，同 pip install --force-reinstall。'
         )
+        install_p.add_argument(
+            '-x',
+            '--dockerproxy',
+            type=str,
+            help='docker 镜像代理域名。'
+        )
         install_p.set_defaults(method=self.install_deps, parser=install_p)
 
         start_p = model_subparsers.add_parser(
@@ -309,6 +321,12 @@ class Command(BaseCommand):
             default=False,
             action='store_true',
             help='更新 BGE 模型依赖的 docker 镜像。'
+        )
+        start_p.add_argument(
+            '-x',
+            '--dockerproxy',
+            type=str,
+            help='docker 镜像代理域名。'
         )
         start_p.set_defaults(method=self.start_model, parser=start_p)
 
@@ -591,6 +609,7 @@ class Command(BaseCommand):
     def init_scaffold(self, args):
         scaffold_name = args.scaffold_name
         home = args.home
+        dockerproxy = args.dockerproxy
         if home is None:
             home = get_home()
         scaffold_dir = join(home, scaffold_name)
@@ -643,7 +662,7 @@ class Command(BaseCommand):
             mirror_models, home=scaffold_dir)
         if confirm('是否安装 bge-python-sdk？'):
             os.chdir(scaffold_dir)
-            self._install_sdk()
+            self._install_sdk(dockerproxy=dockerproxy)
         output('[green]成功创建模型项目脚手架[/green]')
 
     def config_model(self, args):
@@ -822,7 +841,7 @@ class Command(BaseCommand):
         output('')
         output('[green]解读模型配置已保存至[/green] {}'.format(config_path))
 
-    def _install_sdk(self):
+    def _install_sdk(self, dockerproxy=None):
         output("正在安装 bge-python-sdk")
         config_path = self.get_model_config_path()
         config = get_config_parser(config_path)
@@ -835,7 +854,7 @@ class Command(BaseCommand):
             'bge-python-sdk pimento requests_toolbelt -t /code/lib'
         )
         image_name = RUNTIMES[runtime]
-        self._get_or_pull_image(client, image_name)
+        self._get_or_pull_image(client, image_name, dockerproxy=dockerproxy)
         output('开始安装模型依赖包...')
         command = ('sh -c "{}"').format(command)
         container_name = generate_container_name(model_id)
@@ -1577,6 +1596,7 @@ class Command(BaseCommand):
         upgrade = args.upgrade
         no_deps = args.no_deps
         force_reinstall = args.force_reinstall
+        dockerproxy = args.dockerproxy
         pkgs = ' '.join(package_name)
         config_path = self.get_model_config_path()
         config = get_config_parser(config_path)
@@ -1599,7 +1619,7 @@ class Command(BaseCommand):
         command.append('-t /code/lib {}'.format(' '.join(deps)))
         command = ' '.join(command)
         image_name = RUNTIMES[runtime]
-        self._get_or_pull_image(client, image_name)
+        self._get_or_pull_image(client, image_name, dockerproxy=dockerproxy)
         with console.status('开始安装模型依赖包...', spinner='earth'):
             command = ('sh -c "{}"').format(command)
             container_name = generate_container_name(model_id)
@@ -1610,6 +1630,7 @@ class Command(BaseCommand):
     def uninstall_deps(self, args):
         package_name = args.package_name
         requirements = args.requirements
+        dockerproxy = args.dockerproxy
         pkgs = ' '.join(package_name)
         config_path = self.get_model_config_path()
         config = get_config_parser(config_path)
@@ -1626,7 +1647,7 @@ class Command(BaseCommand):
         command.append('-t /code/lib {}'.format(' '.join(deps)))
         command = ' '.join(command)
         image_name = RUNTIMES[runtime]
-        self._get_or_pull_image(client, image_name)
+        self._get_or_pull_image(client, image_name, dockerproxy=dockerproxy)
         with console.status('开始卸载模型依赖包...', spinner='earth'):
             command = ('sh -c "{}"').format(command)
             container_name = generate_container_name(model_id)
@@ -1636,6 +1657,7 @@ class Command(BaseCommand):
 
     def start_model(self, args):
         port = args.port
+        dockerproxy = args.dockerproxy
         update_docker = args.update_docker
         home = get_home()
         config_path = self.get_model_config_path()
@@ -1646,7 +1668,7 @@ class Command(BaseCommand):
         client = self._get_docker_client()
         image_name = RUNTIMES[runtime]
         if update_docker:
-            self._get_or_pull_image(client, image_name)
+            self._get_or_pull_image(client, image_name, dockerproxy=dockerproxy)
         command = 'python -u /server/app.py'
         user = get_sys_user()
         container_name = generate_container_name(model_id)
@@ -1704,36 +1726,48 @@ class Command(BaseCommand):
             sys.exit(1)
         return client
 
-    def _get_or_pull_image(self, client, image_name):
+    def _get_or_pull_image(self, client, image_name, dockerproxy=None):
+        image = image_name
+        if dockerproxy:
+            image = '%s/%s' % (dockerproxy, image_name)
         try:
-            client.images.get(image_name)
+            client.images.get(image)
         except docker.errors.NotFound:
             output(
                 '[cyan]本地 docker 镜像 {} 不存在，开始拉取...[/cyan]'.format(
-                    image_name
+                    image
                 )
             )
-            with console.status(f'拉取镜像 {image_name} 中...',
-                                spinner='earth'):
-                return_code = os.system('docker pull {}'.format(image_name))
+            with console.status(
+                    '拉取镜像 {} 中...'.format(image), spinner='earth'):
+                return_code = os.system('docker pull {}'.format(image))
                 if return_code != 0:
                     output(
-                        '[red]拉取镜像 {} 失败，请重试[/red]'.format(image_name)
+                        '[red]拉取镜像 {} 失败，请重试[/red]'.format(image)
                     )
                     sys.exit(1)
-                output('[green]拉取镜像 {} 成功[/green]'.format(image_name))
+                output('[green]拉取镜像 {} 成功[/green]'.format(image))
         else:
-            with console.status(f'更新镜像 {image_name} 中...',
-                                spinner='earth'):
-                repository, tag = image_name.split(':')
+            with console.status(
+                    '更新镜像 {} 中...'.format(image), spinner='earth'):
+                repository, tag = image.split(':')
                 try:
                     client.images.pull(repository, tag)
                 except docker.errors.APIError:
                     output(
-                        '[yellow]更新镜像 {} 失败，请重试[/yellow]'.format(image_name)
+                        '[yellow]更新镜像 {} 失败，请重试[/yellow]'.format(image)
                     )
                 else:
-                    output('[green]更新镜像 {} 成功[/green]'.format(image_name))
+                    output('[green]更新镜像 {} 成功[/green]'.format(image))
+        if dockerproxy:
+            output(
+                '[green]重命名代理拉取的镜像 {} 为 {}[/green]'.format(
+                    image, image_name
+                )
+            )
+            os.system('docker tag {} {}'.format(image, image_name))
+            output('[green]删除代理镜像 {}[/green]'.format(image))
+            client.images.remove(image)
 
     def _force_remove_container(self, client, container_name):
         try:
