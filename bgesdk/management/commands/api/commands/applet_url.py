@@ -20,49 +20,30 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 11
-    help = '请求数据流。'
+    order = 17
+    help = (
+        '用于获取小程序加密 URL Link，链接默认于29天后过期，返回的 expire_time 字段'
+        '代表过期的时间戳（单位：秒）。'
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'data_element_id',
+            'code',
             type=str,
-            help='数据元编号。'
-        )
-        parser.add_argument(
-            '-b',
-            '--biosample_id',
-            type=str,
-            help='生物样品编号。'
-        )
-        parser.add_argument(
-            '--start_time',
-            type=str,
-            help='起始时间。'
-        )
-        parser.add_argument(
-            '--end_time',
-            type=str,
-            help='终止时间。'
-        )
-        parser.add_argument(
-            '--sort_direction',
-            type=str,
-            default='desc',
-            choices=['desc', 'asc'],
-            help='排序方向'
+            help='BGE 平台微信应用中控所对应的编号(平台后台配置，需管理员处理）。'
         )
         parser.add_argument(
             '-p',
-            '--next_page',
+            '--path',
             type=str,
-            help='要获取的页码。'
+            help='小程序路径；通过 URL Link 进入的小程序页面路径，必须是已经发布的小'
+                 '程序存在的页面，不可携带 query 。path 为空时会跳转小程序主页。'
         )
         parser.add_argument(
-            '-n',
-            '--limit',
-            type=int,
-            help='每页返回数量，默认值为 100。'
+            '-q',
+            '--query',
+            type=str,
+            help='小程序参数；通过 URL Link 进入小程序时的query，最大1024个字符。'
         )
         parser.add_argument(
             '-t',
@@ -73,25 +54,19 @@ class Command(BaseCommand):
 
     def handler(self, args):
         access_token = args.access_token
-        data_element_id = args.data_element_id
         project = get_active_project()
         oauth2_section = DEFAULT_OAUTH2_SECTION
         token_section = DEFAULT_TOKEN_SECTION
+        code = args.code
+        path = args.path
+        query = args.query
         config = read_config(project)
         if not access_token:
             access_token = config_get(config.get, token_section, 'access_token')
         endpoint = config_get(config.get, oauth2_section, 'endpoint')
         api = API(access_token, endpoint=endpoint, timeout=18.)
         try:
-            result = api.get_range_stream(
-                data_element_id,
-                biosample_id=args.biosample_id,
-                start_time=args.start_time,
-                end_time=args.end_time,
-                sort_direction=args.sort_direction,
-                next_page=args.next_page,
-                limit=args.limit
-            )
+            result = api.applet_url(code, path=path, query=query)
         except APIError as e:
             output('[red]请求失败：[/red]')
             output_json(e.result)

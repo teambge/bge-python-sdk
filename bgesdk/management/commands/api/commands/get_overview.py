@@ -20,49 +20,40 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 11
-    help = '请求数据流。'
+    order = 2
+    help = (
+        '用户数据概览。'
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'data_element_id',
+            '--idcard',
             type=str,
-            help='数据元编号。'
+            help='身份证号码。'
         )
         parser.add_argument(
-            '-b',
+            '--phone',
+            type=str,
+            help='手机号；提供了参数 phone，禁止再提供 biosample_id、project_id、'
+                 'external_sample_id。'
+        )
+        parser.add_argument(
             '--biosample_id',
             type=str,
-            help='生物样品编号。'
+            help='BGE 样本编号；提供了参数 biosample_id，禁止再提供 phone、'
+                 'project_id、external_sample_id。'
         )
         parser.add_argument(
-            '--start_time',
+            '--project_id',
             type=str,
-            help='起始时间。'
+            help='BGE 项目编号；提供了参数 project_id 必须提供 '
+                 'external_sample_id，且 phone 和 biosample_id 必须为空。'
         )
         parser.add_argument(
-            '--end_time',
+            '--external_sample_id',
             type=str,
-            help='终止时间。'
-        )
-        parser.add_argument(
-            '--sort_direction',
-            type=str,
-            default='desc',
-            choices=['desc', 'asc'],
-            help='排序方向'
-        )
-        parser.add_argument(
-            '-p',
-            '--next_page',
-            type=str,
-            help='要获取的页码。'
-        )
-        parser.add_argument(
-            '-n',
-            '--limit',
-            type=int,
-            help='每页返回数量，默认值为 100。'
+            help='外部样本编号；提供了参数 external_sample_id 必须提供 '
+                 'project_id，且 phone 和 biosample_id 必须为空。'
         )
         parser.add_argument(
             '-t',
@@ -73,24 +64,26 @@ class Command(BaseCommand):
 
     def handler(self, args):
         access_token = args.access_token
-        data_element_id = args.data_element_id
         project = get_active_project()
         oauth2_section = DEFAULT_OAUTH2_SECTION
         token_section = DEFAULT_TOKEN_SECTION
+        idcard = args.idcard
+        phone = args.phone
+        biosample_id = args.biosample_id
+        project_id = args.project_id
+        external_sample_id = args.external_sample_id
         config = read_config(project)
         if not access_token:
             access_token = config_get(config.get, token_section, 'access_token')
         endpoint = config_get(config.get, oauth2_section, 'endpoint')
         api = API(access_token, endpoint=endpoint, timeout=18.)
         try:
-            result = api.get_range_stream(
-                data_element_id,
-                biosample_id=args.biosample_id,
-                start_time=args.start_time,
-                end_time=args.end_time,
-                sort_direction=args.sort_direction,
-                next_page=args.next_page,
-                limit=args.limit
+            result = api.get_overview(
+                idcard=idcard,
+                phone=phone,
+                biosample_id=biosample_id,
+                project_id=project_id,
+                external_sample_id=external_sample_id,
             )
         except APIError as e:
             output('[red]请求失败：[/red]')

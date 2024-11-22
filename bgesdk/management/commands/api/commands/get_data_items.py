@@ -20,7 +20,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 7
+    order = 10
     help = '请求数据项。'
 
     def add_arguments(self, parser):
@@ -81,7 +81,6 @@ class Command(BaseCommand):
             output('[red]请求失败：[/red]')
             output_json(e.result)
             sys.exit(1)
-        output('[green]请求成功：[/green]')
         output_json(
             result,
             cls=ModelEncoder

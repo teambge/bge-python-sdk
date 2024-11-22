@@ -47,7 +47,6 @@ class Command(BaseCommand):
             output('[red]请求失败：[/red]')
             output_json(e.result)
             sys.exit(1)
-        output('[green]请求成功：[/green]')
         output_json(
             result,
             cls=ModelEncoder

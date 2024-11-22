@@ -25,7 +25,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 12
+    order = 14
     help = '上传目录下文件（不递归上传子目录中文件）。'
 
     def add_arguments(self, parser):

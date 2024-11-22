@@ -20,49 +20,24 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 11
-    help = '请求数据流。'
+    order = 3
+    help = '身份要素核验。'
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'data_element_id',
+            'idcard',
             type=str,
-            help='数据元编号。'
+            help='身份证。'
         )
         parser.add_argument(
-            '-b',
-            '--biosample_id',
+            'realname',
             type=str,
-            help='生物样品编号。'
+            help='真名。'
         )
         parser.add_argument(
-            '--start_time',
+            '--phone',
             type=str,
-            help='起始时间。'
-        )
-        parser.add_argument(
-            '--end_time',
-            type=str,
-            help='终止时间。'
-        )
-        parser.add_argument(
-            '--sort_direction',
-            type=str,
-            default='desc',
-            choices=['desc', 'asc'],
-            help='排序方向'
-        )
-        parser.add_argument(
-            '-p',
-            '--next_page',
-            type=str,
-            help='要获取的页码。'
-        )
-        parser.add_argument(
-            '-n',
-            '--limit',
-            type=int,
-            help='每页返回数量，默认值为 100。'
+            help='手机号。'
         )
         parser.add_argument(
             '-t',
@@ -73,25 +48,19 @@ class Command(BaseCommand):
 
     def handler(self, args):
         access_token = args.access_token
-        data_element_id = args.data_element_id
         project = get_active_project()
         oauth2_section = DEFAULT_OAUTH2_SECTION
         token_section = DEFAULT_TOKEN_SECTION
+        idcard = args.idcard
+        realname = args.realname
+        phone = args.phone
         config = read_config(project)
         if not access_token:
             access_token = config_get(config.get, token_section, 'access_token')
         endpoint = config_get(config.get, oauth2_section, 'endpoint')
         api = API(access_token, endpoint=endpoint, timeout=18.)
         try:
-            result = api.get_range_stream(
-                data_element_id,
-                biosample_id=args.biosample_id,
-                start_time=args.start_time,
-                end_time=args.end_time,
-                sort_direction=args.sort_direction,
-                next_page=args.next_page,
-                limit=args.limit
-            )
+            result = api.verify_id_meta(idcard, realname, phone=phone)
         except APIError as e:
             output('[red]请求失败：[/red]')
             output_json(e.result)

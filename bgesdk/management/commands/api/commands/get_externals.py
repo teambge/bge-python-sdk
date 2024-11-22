@@ -20,7 +20,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 9
+    order = 5
     help = '获取套件外部编号对应表。'
 
     def add_arguments(self, parser):
@@ -59,7 +59,6 @@ class Command(BaseCommand):
             output('[red]请求失败：[/red]')
             output_json(e.result)
             sys.exit(1)
-        output('[green]请求成功：[/green]')
         output_json(
             result,
             cls=ModelEncoder

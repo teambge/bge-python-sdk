@@ -20,7 +20,7 @@ DEFAULT_TOKEN_SECTION = constants.DEFAULT_TOKEN_SECTION
 
 class Command(BaseCommand):
 
-    order = 10
+    order = 12
     help = '聚合组学数据（目前仅支持聚合数据流中符合平台设定 JSONPath 规则的数值型数据）。'
 
     def add_arguments(self, parser):
@@ -99,7 +99,6 @@ class Command(BaseCommand):
             output('[red]请求失败：[/red]')
             output_json(e.result)
             sys.exit(1)
-        output('[green]请求成功：[/green]')
         output_json(
             result,
             cls=ModelEncoder

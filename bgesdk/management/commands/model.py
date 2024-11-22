@@ -618,8 +618,6 @@ class Command(BaseCommand):
         readme_path = join(bge_dir, 'README')
         if not exists(readme_path):
             open(readme_path, 'w').write('BGE Python Model')
-        if not exists(model_config_path):
-            open(model_config_path, 'w').write(MODEL_CONFIG_TEMPLATE)
         model_config_path = join(scaffold_dir, 'model.ini')
         output(CREATE_MESSAGE.format(model_config_path))
         if not exists(model_config_path):
