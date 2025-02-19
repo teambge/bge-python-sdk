@@ -1,3 +1,12 @@
+# [0.8.0](https://gitlab.omgut.com/bge/bge-python-sdk/compare/v0.7.0...v0.8.0) (2025-02-19)
+
+
+### Features
+
+* **wgs:** 新增解码基因接口客户端方法 ([4e0ef4f](https://gitlab.omgut.com/bge/bge-python-sdk/commit/4e0ef4f711bc9cc589b9426cedf2452582f2ec65))
+
+
+
 ## [0.6.2](https://github.com/teambge/bge-python-sdk/compare/v0.6.1...v0.6.2) (2024-07-22)
 
 
