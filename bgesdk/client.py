@@ -1484,8 +1484,8 @@ class API(object):
         timeout = self.timeout
         request = self._create_request()
         result = request.get(
-            '/wgs/reports', params=params, timeout=timeout)
-        return models.ListModel(result)
+            '/wgs/report/details', params=params, timeout=timeout)
+        return models.Model(result)
 
     def report(self, biosample_id, domain_version, report_id):
         params = {}
@@ -1495,7 +1495,7 @@ class API(object):
         timeout = self.timeout
         request = self._create_request()
         result = request.get(
-            '/wgs/report', params=params, timeout=timeout)
+            '/wgs/report/detail', params=params, timeout=timeout)
         return models.Model(result)
 
     def dictionaries(self, biosample_id):
