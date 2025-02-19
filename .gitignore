@@ -17,6 +17,4 @@ test_env.sh
 htmlcov/
 .env
 .env_*
-.coverage
-coverage.xml
 test.py
