@@ -20,8 +20,8 @@ test:
 
 test-pro:
 	$(PIP) install pytest pytest-cov; \
-	grep -v '^#' .env-pro; \
-	export $(grep -v '^#' .env-pro | xargs); \
+	grep -v '^#' .env_pro; \
+	export $(grep -v '^#' .env_pro | xargs); \
 	pytest -s --cov-config=./.coveragerc --cov-report html --cov-report xml --cov=./
 
 upload-test:
