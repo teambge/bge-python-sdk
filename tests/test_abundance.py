@@ -13,7 +13,7 @@ def check_result(result):
     next_page = result['next_page']
     assert isinstance(result['result'], list)
     assert isinstance(result['count'], int)
-    assert isinstance(next_page, int) or next_page is None
+    assert isinstance(next_page, (int, str)) or next_page is None
 
 
 class TestTaxonAbundance:
