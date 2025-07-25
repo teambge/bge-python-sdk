@@ -2,6 +2,8 @@
 
 import json
 
+from . import constants
+
 from six.moves import UserDict
 from weakref import proxy
 
@@ -17,16 +19,30 @@ class ModelEncoder(json.JSONEncoder):
         return o.data
 
 
-def _encode_data(val):
+def _encode_data(val, model_class=None, list_model_class=None):
+    if model_class is None:
+        model_class = Model
+    if list_model_class is None:
+        list_model_class = ListModel
     if isinstance(val, dict):
         ret = {}
         for sub_key, sub_val in val.items():
-            ret[sub_key] = _encode_data(sub_val)
+            ret[sub_key] = _encode_data(
+                sub_val,
+                model_class=model_class,
+                list_model_class=list_model_class,
+            )
         return Model(ret)
     elif isinstance(val, list):
         ret = []
         for sub_val in val:
-            ret.append(_encode_data(sub_val))
+            ret.append(
+                _encode_data(
+                    sub_val,
+                    model_class=model_class,
+                    list_model_class=list_model_class,
+                )
+            )
         return ListModel(ret)
     else:
         return val
@@ -48,11 +64,17 @@ def _decode_data(val):
 
 class ListModel(list):
 
-    def __init__(self, data):
+    def __init__(self, data, model_class=None, list_model_class=None):
         assert isinstance(data, (list, tuple))
         ret = []
         for val in data:
-            ret.append(_encode_data(val))
+            ret.append(
+                _encode_data(
+                    val,
+                    model_class=Model,
+                    list_model_class=ListModel,
+                )
+            )
         super().__init__(ret)
 
     def json(self):
@@ -125,10 +147,14 @@ class Model(UserDict):
         }
     """
 
-    def __init__(self, data):
+    def __init__(self, data, model_class=None, list_model_class=None):
         ret = {}
         for key, val in data.items():
-            ret[key] = _encode_data(val)
+            ret[key] = _encode_data(
+                val,
+                model_class=model_class,
+                list_model_class=list_model_class,
+            )
         UserDict.__init__(self, ret)
 
     def __getattr__(self, name):
@@ -182,3 +208,41 @@ class ClientCredentialsToken(Model):
         """刷新（重新获取）客户端模式访问令牌"""
         oauth2 = self._oauth2
         return oauth2.get_credentials_token()
+
+
+class ReportCollection(Model):
+
+    def __init__(self, api, data):
+        super().__init__(data)
+        self._api = proxy(api)
+
+    def domains(self):
+        return constants.REPORT_DOMAINS.copy()
+
+    for domain in constants.REPORT_DOMAINS.keys():
+        exec(f'''
+def get_{domain}_details(self):
+    data = self.data
+    biosample_id = data['biosample_id']
+    return self._api.report_details(biosample_id, '{domain}')
+''')
+
+
+class ReportDetails(Model):
+
+    def __init__(self, api, data):
+        list_ = data.pop('list', [])
+        super().__init__(data)
+        self.data['list'] = ReportDetailsList(list_)
+        self._api = proxy(api)
+
+
+class ReportDetailsList(ListModel):
+
+    pass
+
+
+
+class ReportDetail(Model):
+
+    pass

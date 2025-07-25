@@ -7,6 +7,10 @@ class BGEError(Exception):
     """SDK 错误"""
 
 
+class ArgError(Exception):
+    """参数错误"""
+
+
 class APIError(BGEError):
     """接口错误"""
 

@@ -1,3 +1,19 @@
+# [1.0.0](https://gitlab.omgut.com/bge/bge-python-sdk/compare/v0.7.0...v1.0.0) (2025-07-25)
+
+
+### Bug Fixes
+
+* 修改丰度接口的单元测试脚本 ([a4e3162](https://gitlab.omgut.com/bge/bge-python-sdk/commit/a4e3162a6707c05b6b4d55e21019be44aaba4063))
+* 修改解码基因接口路径 ([be691b2](https://gitlab.omgut.com/bge/bge-python-sdk/commit/be691b247f9c67a3a251f8ab8e2f1d72e7a1c5b6))
+
+
+### Features
+
+* **report:** 新增基因组报告相关接口 ([a2469d8](https://gitlab.omgut.com/bge/bge-python-sdk/commit/a2469d8e012dbfd3cfb90f20bb55be9d85377b41))
+* **wgs:** 新增解码基因接口客户端方法 ([4e0ef4f](https://gitlab.omgut.com/bge/bge-python-sdk/commit/4e0ef4f711bc9cc589b9426cedf2452582f2ec65))
+
+
+
 # [0.8.0](https://gitlab.omgut.com/bge/bge-python-sdk/compare/v0.7.0...v0.8.0) (2025-02-19)
 
 

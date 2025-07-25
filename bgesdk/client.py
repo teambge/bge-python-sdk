@@ -18,7 +18,7 @@ BGE 开放平台 SDK 客户端模块。
 
 from . import constants
 from . import models
-from .error import BGEError
+from .error import BGEError, ArgError
 from .fs import FileItem
 from .http import HTTPRequest
 from .utils import new_logger, human_byte
@@ -904,17 +904,45 @@ class API(object):
             None
         """
         inst = self.get_download_url(
-            object_name, region=None, expiration_time=expiration_time,
-            **kwargs)
-        size = 0
-        prog_size = 61  # 单行输出的进度条固定为 80 个字符长度
+            object_name,
+            region=region,
+            expiration_time=expiration_time,
+            **kwargs,
+        )
         url = inst.url
         chunk_size = int(chunk_size)
-        sys.stdout.write('\nStart downloading: %s' % object_name)
+        sys.stdout.write(f'\nStart downloading: {object_name}')
         sys.stdout.write('\n\n')
-        timeout = self.timeout
+        self.download_file(url, fp, chunk_size=chunk_size)
+
+    def download_file(self, url, destination, chunk_size=8192, timeout=None):
+        if timeout is None:
+            timeout = self.timeout
+        if isinstance(destination, str):
+            with open(destination, 'wb') as fp:
+                self._download_file(
+                    url,
+                    fp,
+                    chunk_size=chunk_size,
+                    timeout=timeout,
+                )
+        else:
+            self._download_file(
+                url,
+                destination,
+                chunk_size=chunk_size,
+                timeout=timeout,
+            )
+
+    def _download_file(self, url, fp, chunk_size=8192, timeout=None):
+        if timeout is None:
+            timeout = self.timeout
+        size = 0
+        prog_size = 61  # 单行输出的进度条固定为 80 个字符长度
+        sys.stdout.write(f'\nUrl: {url}\n\n')
         try:
             with requests.get(url, stream=True, timeout=timeout) as r:
+                r.raise_for_status()
                 total = r.headers.get('content-length')
                 if total is not None:
                     total = int(total)
@@ -942,10 +970,10 @@ class API(object):
                 flush_func = getattr(fp, 'flush', None)
                 if flush_func:
                     flush_func()
-        except requests.exceptions.HTTPError:
-            raise BGEError('download request error')
+        except requests.exceptions.HTTPError as e:
+            raise BGEError(f'Download file error. {e}.') from None
         except Exception as e:
-            raise BGEError(e)
+            raise BGEError(e) from None
 
     def ferry_to_oss(self, account, password, project_no, biosample_cnt,
                      included_filename_exts=None, sample_names=None,
@@ -1464,10 +1492,10 @@ class API(object):
         """获取样本报告集
 
         Args:
-            biosample_id (str): 样本编号。
+            biosample_id (str): 样本编号；
 
         Returns:
-            Model: 返回的样本报告集；
+            ReportCollection: 返回的样本报告集；
         """
         params = {}
         params['biosample_id'] = biosample_id
@@ -1475,9 +1503,25 @@ class API(object):
         request = self._create_request()
         result = request.get(
             '/wgs/report/collection', params=params, timeout=timeout)
-        return models.Model(result)
+        return models.ReportCollection(self, result)
 
-    def reports(self, biosample_id, domain):
+    def report_details(self, biosample_id, domain):
+        """获取样本报告列表
+
+        未分页，直接返回参数 domain 下的全部报告。
+        Args:
+            biosample_id (str): 样本编号；
+            domain (str): 报告域；
+
+        Returns:
+            ReportDetails: 返回的样本报告列表结果；
+        """
+        domains = constants.REPORT_DOMAINS
+        if domain not in domains:
+            raise ArgError(
+                f'Invalid domain parameter value: {domain}, '
+                f'Valid options are: {", ".join(domains)}'
+            )
         params = {}
         params['biosample_id'] = biosample_id
         params['domain'] = domain
@@ -1485,9 +1529,25 @@ class API(object):
         request = self._create_request()
         result = request.get(
             '/wgs/report/details', params=params, timeout=timeout)
-        return models.Model(result)
+        return models.ReportDetails(self, result)
 
-    def report(self, biosample_id, domain_version, report_id):
+    def report_detail(self, biosample_id, domain_version, report_id):
+        """获取样本报告详情
+
+        Args:
+            biosample_id (str): 样本编号；
+            domain_version (str): 报告域版本；
+            report_id (str): 报告编号；
+
+        Returns:
+            ReportDetail: 返回的样本报告详情；
+        """
+        domain_versions = constants.REPORT_DOMAIN_VERSIONS
+        if domain_version not in domain_versions:
+            raise ArgError(
+                f'Invalid domain_version parameter value: {domain_version}, '
+                f'Valid options are: {", ".join(domain_versions)}'
+            )
         params = {}
         params['biosample_id'] = biosample_id
         params['domain_version'] = domain_version
@@ -1496,7 +1556,7 @@ class API(object):
         request = self._create_request()
         result = request.get(
             '/wgs/report/detail', params=params, timeout=timeout)
-        return models.Model(result)
+        return models.ReportDetail(result)
 
     def dictionaries(self, biosample_id):
         params = {}
@@ -1505,4 +1565,13 @@ class API(object):
         request = self._create_request()
         result = request.get(
             '/wgs/dictionaries', params=params, timeout=timeout)
+        return models.ListModel(result)
+
+    def merit_cards(self, biosample_id):
+        params = {}
+        params['biosample_id'] = biosample_id
+        timeout = self.timeout
+        request = self._create_request()
+        result = request.get(
+            '/wgs/merit-cards', params=params, timeout=timeout)
         return models.ListModel(result)
