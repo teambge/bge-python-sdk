@@ -137,7 +137,7 @@ class HTTPRequest(object):
         code = result['code']
         msg = result['msg']
         if code != 0:
-            raise APIError(code, msg, data)
+            raise APIError(code=code, msg=msg, data=data)
         pagination = result.get('pagination')
         if pagination:
             # 相关接口分页返回方式升级后，可去除此处

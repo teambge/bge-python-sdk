@@ -7,14 +7,14 @@ class BGEError(Exception):
     """SDK 错误"""
 
 
-class ArgError(Exception):
+class ArgError(BGEError):
     """参数错误"""
 
 
 class APIError(BGEError):
     """接口错误"""
 
-    def __init__(self, code, msg, data=None):
+    def __init__(self, msg='api error', code=400, data=None):
         self.code = code = int(code)
         self.msg = msg
         self.data = data
