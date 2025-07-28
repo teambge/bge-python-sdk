@@ -14,14 +14,14 @@ build:
 # 单元测试
 test:
 	$(PIP) install pytest pytest-cov; \
-	grep -v '^#' .env; \
-	export $(grep -v '^#' .env | xargs); \
+	grep -v '^#' .env.dev; \
+	export $(grep -v '^#' .env.dev | xargs) && \
 	pytest -s --cov-config=./.coveragerc --cov-report html --cov-report xml --cov=./
 
 test-pro:
 	$(PIP) install pytest pytest-cov; \
-	grep -v '^#' .env_pro; \
-	export $(grep -v '^#' .env_pro | xargs); \
+	grep -v '^#' .env.pro; \
+	export $(grep -v '^#' .env.pro | xargs) && \
 	pytest -s --cov-config=./.coveragerc --cov-report html --cov-report xml --cov=./
 
 upload-test:

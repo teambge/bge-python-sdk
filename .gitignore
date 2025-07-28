@@ -17,4 +17,5 @@ test_env.sh
 htmlcov/
 .env
 .env_*
+.env.*
 test.py
