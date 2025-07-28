@@ -21,11 +21,11 @@ from . import models
 from .error import BGEError, ArgError
 from .fs import FileItem
 from .http import HTTPRequest
-from .utils import new_logger, human_byte
+from .utils import new_logger, human_byte, sanitize_filename
 
 from aliyunsdkcore.auth.credentials import StsTokenCredential
 from aliyunsdkcore.client import AcsClient
-from posixpath import split, join, isdir, isfile
+from posixpath import split, join, isdir, isfile, normpath
 from requests_toolbelt.multipart import encoder
 from six import text_type
 from six.moves.urllib.parse import urljoin, urlencode
@@ -919,6 +919,10 @@ class API(object):
         if timeout is None:
             timeout = self.timeout
         if isinstance(destination, str):
+            destination = normpath(destination)
+            filename = sanitize_filename(url)
+            if isdir(destination):
+                destination = join(destination, filename)
             with open(destination, 'wb') as fp:
                 self._download_file(
                     url,
@@ -939,15 +943,19 @@ class API(object):
             timeout = self.timeout
         size = 0
         prog_size = 61  # 单行输出的进度条固定为 80 个字符长度
-        sys.stdout.write(f'\nUrl: {url}\n\n')
+        sys.stdout.write(f'\nUrl: {url}\n')
         try:
             with requests.get(url, stream=True, timeout=timeout) as r:
                 r.raise_for_status()
-                total = r.headers.get('content-length')
+                total = r.headers.get('Content-Length')
                 if total is not None:
                     total = int(total)
                     for chunk in r.iter_content(chunk_size):
+                        if not chunk:
+                            continue
                         size += len(chunk)
+                        if size > total:
+                            size = total
                         eq_size = int(size * prog_size / total)
                         equal_s = '=' * eq_size
                         blank_s = ' ' * (prog_size - eq_size)
@@ -960,6 +968,8 @@ class API(object):
                         fp.write(chunk)
                 else:
                     for chunk in r.iter_content(chunk_size):
+                        if not chunk:
+                            continue
                         size += len(chunk)
                         sys.stdout.write(
                             '\r\t已下载文件：%s' % human_byte(size).ljust(7)
